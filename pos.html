@@ -158,14 +158,29 @@ function formatPickupDisplay(value){
 
   const str = String(value).trim();
 
-  if(
-    str === "現場取餐" ||
-    str.includes("現場取餐")
-  ){
+  if(str === "現場取餐" || str.includes("現場取餐")){
     return "現場取餐";
   }
 
-  // ISO 或試算表日期格式
+  // 純時間格式，例如 11:30 / 4:30 / 11:30:00
+  const timeMatch = str.match(/^(\d{1,2}):(\d{2})(?::(\d{2}))?$/);
+  if(timeMatch){
+    const now = new Date();
+    const yyyy = now.getFullYear();
+    const mm = String(now.getMonth() + 1).padStart(2, "0");
+    const dd = String(now.getDate()).padStart(2, "0");
+
+    let hh = parseInt(timeMatch[1], 10);
+    const mi = timeMatch[2];
+    const ap = hh >= 12 ? "下午" : "上午";
+
+    hh = hh % 12;
+    if(hh === 0) hh = 12;
+
+    return `${yyyy}/${mm}/${dd} ${ap} ${String(hh).padStart(2, "0")}:${mi}`;
+  }
+
+  // 完整日期時間格式
   const d = new Date(str);
   if(!isNaN(d)){
     const yyyy = d.getFullYear();
