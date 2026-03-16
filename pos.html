@@ -103,6 +103,11 @@ body{
   font-size:14px;
   font-weight:700;
 }
+.sbtn:disabled{
+  opacity:.45;
+  cursor:not-allowed;
+  filter:grayscale(.25);
+}
 .reprint{ background:#3498db; color:#fff; }
 .notify{ background:#9b59b6; color:#fff; }
 .done{ background:#2ecc71; color:#fff; }
@@ -146,6 +151,38 @@ let printedOrders = new Set();
 
 function setMsg(text){
   document.getElementById("msg").innerText = text || "";
+}
+
+function formatPickupDisplay(value){
+  if(!value) return "";
+
+  const str = String(value).trim();
+
+  if(
+    str === "現場取餐" ||
+    str.includes("現場取餐")
+  ){
+    return "現場取餐";
+  }
+
+  // ISO 或試算表日期格式
+  const d = new Date(str);
+  if(!isNaN(d)){
+    const yyyy = d.getFullYear();
+    const mm = String(d.getMonth() + 1).padStart(2, "0");
+    const dd = String(d.getDate()).padStart(2, "0");
+
+    let hh = d.getHours();
+    const mi = String(d.getMinutes()).padStart(2, "0");
+    const ap = hh >= 12 ? "下午" : "上午";
+
+    hh = hh % 12;
+    if(hh === 0) hh = 12;
+
+    return `${yyyy}/${mm}/${dd} ${ap} ${String(hh).padStart(2, "0")}:${mi}`;
+  }
+
+  return str;
 }
 
 async function connectUSB(){
@@ -207,25 +244,30 @@ function renderOrders(list){
     return;
   }
 
-  div.innerHTML = list.map(o => `
-    <div class="card">
-      <div class="seq">${o.seq || ""}</div>
-      <div class="meta">狀態：${o.status || ""} ｜ 付款：${o.pay || ""}</div>
-      <div class="meta">取餐：${o.pickup || ""}</div>
-      ${o.customerName ? `<div class="meta">姓名：${o.customerName}</div>` : ""}
-      ${o.customerPhone ? `<div class="meta">電話：${o.customerPhone}</div>` : ""}
-      <div class="content">${String(o.content || "").replaceAll(",", "<br>")}</div>
-      <div class="total">$${o.total || 0}</div>
-      <div class="tag">${o.id || ""}</div>
+  div.innerHTML = list.map(o => {
+    const isPendingPay = o.status === "待付款";
+    const pickupText = formatPickupDisplay(o.pickup);
 
-      <div class="actions">
-        <button class="sbtn reprint" onclick='manualPrint(${JSON.stringify(encodeURIComponent(JSON.stringify(o)))})'>補印</button>
-        <button class="sbtn notify" onclick="setStatus(${o.row}, '可取餐')">通知取餐</button>
-        <button class="sbtn done" onclick="setStatus(${o.row}, '已完成')">完成</button>
-        <button class="sbtn cancel" onclick="setStatus(${o.row}, '已作廢')">作廢</button>
+    return `
+      <div class="card">
+        <div class="seq">${o.seq || ""}</div>
+        <div class="meta">狀態：${o.status || ""} ｜ 付款：${o.pay || ""}</div>
+        <div class="meta">取餐：${pickupText}</div>
+        ${o.customerName ? `<div class="meta">姓名：${o.customerName}</div>` : ""}
+        ${o.customerPhone ? `<div class="meta">電話：${o.customerPhone}</div>` : ""}
+        <div class="content">${String(o.content || "").replaceAll(",", "<br>")}</div>
+        <div class="total">$${o.total || 0}</div>
+        <div class="tag">${o.id || ""}</div>
+
+        <div class="actions">
+          <button class="sbtn reprint" ${isPendingPay ? "disabled" : ""} onclick='manualPrint(${JSON.stringify(encodeURIComponent(JSON.stringify(o)))})'>補印</button>
+          <button class="sbtn notify" ${isPendingPay ? "disabled" : ""} onclick="setStatus(${o.row}, '可取餐')">通知取餐</button>
+          <button class="sbtn done" ${isPendingPay ? "disabled" : ""} onclick="setStatus(${o.row}, '已完成')">完成</button>
+          <button class="sbtn cancel" ${isPendingPay ? "disabled" : ""} onclick="setStatus(${o.row}, '已作廢')">作廢</button>
+        </div>
       </div>
-    </div>
-  `).join("");
+    `;
+  }).join("");
 }
 
 async function autoPrint(list){
@@ -250,6 +292,10 @@ async function autoPrint(list){
 async function manualPrint(encoded){
   try{
     const o = JSON.parse(decodeURIComponent(encoded));
+    if(o.status === "待付款"){
+      alert("此筆訂單尚未付款，不能補印");
+      return;
+    }
     await printOrderLabel(o);
     setMsg(`${o.seq} 補印完成`);
   }catch(err){
@@ -259,18 +305,31 @@ async function manualPrint(encoded){
 }
 
 async function setStatus(row, status){
-  await updateStatus(row, status);
-  await fetchOrders();
+  try{
+    const res = await fetch(
+      GAS_API +
+      "?action=updateStatus" +
+      "&row=" + encodeURIComponent(row) +
+      "&status=" + encodeURIComponent(status) +
+      "&t=" + Date.now()
+    );
+
+    const data = await res.json();
+
+    if(data && data.success === false){
+      alert(data.message || "此筆訂單目前不可操作");
+      return;
+    }
+
+    await fetchOrders();
+  }catch(err){
+    console.error("setStatus 失敗：", err);
+    alert("操作失敗：" + err.message);
+  }
 }
 
 async function updateStatus(row, status){
-  await fetch(
-    GAS_API +
-    "?action=updateStatus" +
-    "&row=" + encodeURIComponent(row) +
-    "&status=" + encodeURIComponent(status) +
-    "&t=" + Date.now()
-  );
+  return setStatus(row, status);
 }
 
 async function printOrderLabel(o){
@@ -281,7 +340,7 @@ async function printOrderLabel(o){
   const items = String(o.content || "").split(",");
   const width = 384;
   const lineHeight = 52;
-  let estimatedHeight = 360 + (items.length * lineHeight);
+  let estimatedHeight = 420 + (items.length * lineHeight);
 
   const canvas = document.createElement("canvas");
   const ctx = canvas.getContext("2d");
@@ -302,7 +361,7 @@ async function printOrderLabel(o){
   ctx.fillText(String(o.seq || ""), 10, y); y += 58;
 
   ctx.font = "28px sans-serif";
-  ctx.fillText("取餐：" + String(o.pickup || ""), 10, y); y += 42;
+  ctx.fillText("取餐：" + formatPickupDisplay(o.pickup), 10, y); y += 42;
   ctx.fillText("付款：" + String(o.pay || ""), 10, y); y += 42;
 
   if(o.customerName){
