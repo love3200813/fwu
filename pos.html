@@ -397,8 +397,10 @@ const cashMenuItems = [
 let printerDevice = null;
 let endpointOut = null;
 let printedOrders = new Set();
+let printingOrders = new Set();
 let cashCart = {};
 let currentShift = null;
+let isFetchingOrders = false;
 
 function setMsg(text){
   document.getElementById("msg").innerText = text || "";
@@ -841,6 +843,9 @@ async function connectUSB(){
    ========================= */
 
 async function fetchOrders(){
+  if(isFetchingOrders) return;
+
+  isFetchingOrders = true;
   try{
     const res = await fetch(GAS_API + "?action=getOrders&t=" + Date.now());
     const data = await res.json();
@@ -848,6 +853,8 @@ async function fetchOrders(){
     await autoPrint(data);
   }catch(err){
     setMsg("抓訂單失敗：" + err.message);
+  }finally{
+    isFetchingOrders = false;
   }
 }
 
@@ -912,21 +919,27 @@ async function autoPrint(list){
   if(!printerDevice || !endpointOut) return;
 
   for(const o of list){
-    if(o.status === "待列印" && !printedOrders.has(o.id)){
-      if(!shouldPrintNow(o)){
-        continue;
-      }
+    if(o.status !== "待列印") continue;
+    if(!o.id) continue;
+    if(printedOrders.has(o.id)) continue;
+    if(printingOrders.has(o.id)) continue;
+    if(!shouldPrintNow(o)) continue;
 
-      try{
-        setMsg(`提醒店員：${o.seq} 可出單，正在列印...`);
-        playBeep();
-        await printOrderLabel(o);
-        printedOrders.add(o.id);
-        await doUpdateStatus(o.row, "製作中");
-        setMsg(`${o.seq} 已送出列印`);
-      }catch(err){
-        setMsg(`列印失敗：${err.message}`);
-      }
+    try{
+      printingOrders.add(o.id);
+
+      setMsg(`提醒店員：${o.seq} 可出單，正在列印...`);
+      playBeep();
+
+      await printOrderLabel(o);
+      printedOrders.add(o.id);
+      await doUpdateStatus(o.row, "製作中");
+
+      setMsg(`${o.seq} 已送出列印`);
+    }catch(err){
+      setMsg(`列印失敗：${err.message}`);
+    }finally{
+      printingOrders.delete(o.id);
     }
   }
 }
