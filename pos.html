@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>飯丸屋 POS v10.0.0</title>
+<title>飯丸屋 POS v7</title>
 <style>
 body{
   margin:0;
@@ -346,37 +346,73 @@ function playBeep(){
   }catch(err){}
 }
 
+function formatDateObjTaipei(dateObj){
+  const parts = new Intl.DateTimeFormat("zh-TW", {
+    timeZone: "Asia/Taipei",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false
+  }).formatToParts(dateObj);
+
+  const map = {};
+  parts.forEach(p => { map[p.type] = p.value; });
+
+  let hh24 = parseInt(map.hour, 10);
+  const ap = hh24 >= 12 ? "下午" : "上午";
+  let hh12 = hh24 % 12;
+  if(hh12 === 0) hh12 = 12;
+
+  return `${map.year}/${map.month}/${map.day} ${ap} ${pad2(hh12)}:${map.minute}`;
+}
+
 function parsePickupString(value){
   const str = String(value || "").trim();
+
   if(!str || str === "現場取餐" || str.includes("現場取餐")){
     return null;
   }
-  const m = str.match(/^(\d{4})-(\d{2})-(\d{2}) (\d{2}):(\d{2})$/);
-  if(!m) return null;
-  return new Date(
-    Number(m[1]),
-    Number(m[2]) - 1,
-    Number(m[3]),
-    Number(m[4]),
-    Number(m[5]),
-    0,
-    0
-  );
+
+  // ISO 格式，例如 2026-03-17T08:00:00.000Z
+  const isoDate = new Date(str);
+  if(!isNaN(isoDate.getTime())){
+    return isoDate;
+  }
+
+  // 本地格式，例如 2026-03-17 18:00
+  const m = str.match(/^(\d{4})-(\d{2})-(\d{2})[ T](\d{2}):(\d{2})(?::(\d{2}))?$/);
+  if(m){
+    return new Date(
+      Number(m[1]),
+      Number(m[2]) - 1,
+      Number(m[3]),
+      Number(m[4]),
+      Number(m[5]),
+      Number(m[6] || 0),
+      0
+    );
+  }
+
+  return null;
+}
+
+function isReserveOrder(order){
+  const raw = String(order.rawPickup || order.pickup || "").trim();
+  return !!raw && raw !== "現場取餐" && !raw.includes("現場取餐");
 }
 
 function formatPickupDisplay(value){
   const str = String(value || "").trim();
+
   if(!str || str === "現場取餐" || str.includes("現場取餐")){
     return "現場取餐";
   }
 
   const d = parsePickupString(str);
   if(d){
-    let hh = d.getHours();
-    const ap = hh >= 12 ? "下午" : "上午";
-    hh = hh % 12;
-    if(hh === 0) hh = 12;
-    return `${d.getFullYear()}/${pad2(d.getMonth()+1)}/${pad2(d.getDate())} ${ap} ${pad2(hh)}:${pad2(d.getMinutes())}`;
+    return formatDateObjTaipei(d);
   }
 
   return str;
@@ -578,8 +614,21 @@ function renderOrders(list){
 
   div.innerHTML = list.map(o => {
     const isPendingPay = o.status === "待付款";
+    const isReserve = isReserveOrder(o);
+    const reserveWaiting = isReserve && o.status === "待列印" && !shouldPrintNow(o);
     const pickupText = formatPickupDisplay(o.rawPickup || o.pickup);
-    const reserveHint = (o.rawPickup && o.rawPickup !== "現場取餐") ? `<div class="meta">預約單：將於取餐前 15 分鐘自動出單</div>` : "";
+
+    const disableReprint = isPendingPay || reserveWaiting;
+    const disableNotify = isPendingPay || reserveWaiting || o.status === "待列印";
+    const disableDone = isPendingPay || reserveWaiting || o.status === "待列印";
+    const disableCancel = isPendingPay ? true : false;
+
+    let reserveHint = "";
+    if(isReserve){
+      reserveHint = reserveWaiting
+        ? `<div class="meta">預約單：尚未到出單時間，將於取餐前 15 分鐘自動出單</div>`
+        : `<div class="meta">預約單：已進入可出單時段</div>`;
+    }
 
     return `
       <div class="card">
@@ -594,10 +643,10 @@ function renderOrders(list){
         <div class="tag">${o.id || ""}</div>
 
         <div class="actions">
-          <button class="sbtn reprint" ${isPendingPay ? "disabled" : ""} onclick='manualPrint(${JSON.stringify(encodeURIComponent(JSON.stringify(o)))})'>補印</button>
-          <button class="sbtn notify" ${isPendingPay ? "disabled" : ""} onclick="setStatus(${o.row}, '可取餐')">通知取餐</button>
-          <button class="sbtn done" ${isPendingPay ? "disabled" : ""} onclick="setStatus(${o.row}, '已完成')">完成</button>
-          <button class="sbtn cancel" ${isPendingPay ? "disabled" : ""} onclick="setStatus(${o.row}, '已作廢')">作廢</button>
+          <button class="sbtn reprint" ${disableReprint ? "disabled" : ""} onclick='manualPrint(${JSON.stringify(encodeURIComponent(JSON.stringify(o)))})'>補印</button>
+          <button class="sbtn notify" ${disableNotify ? "disabled" : ""} onclick="setStatus(${o.row}, '可取餐')">通知取餐</button>
+          <button class="sbtn done" ${disableDone ? "disabled" : ""} onclick="setStatus(${o.row}, '已完成')">完成</button>
+          <button class="sbtn cancel" ${disableCancel ? "disabled" : ""} onclick="setStatus(${o.row}, '已作廢')">作廢</button>
         </div>
       </div>
     `;
@@ -630,10 +679,18 @@ async function autoPrint(list){
 async function manualPrint(encoded){
   try{
     const o = JSON.parse(decodeURIComponent(encoded));
+    const reserveWaiting = isReserveOrder(o) && o.status === "待列印" && !shouldPrintNow(o);
+
     if(o.status === "待付款"){
       alert("此筆訂單尚未付款，不能補印");
       return;
     }
+
+    if(reserveWaiting){
+      alert("此筆預約單尚未到出單時間，不能提前補印");
+      return;
+    }
+
     await printOrderLabel(o);
     setMsg(`${o.seq} 補印完成`);
   }catch(err){
