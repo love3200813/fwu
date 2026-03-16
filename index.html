@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>飯丸屋點餐系統 v10</title>
+<title>飯丸屋點餐系統 v10.0.0</title>
 <style>
 :root{
   --bg:#f5f5f2;
@@ -36,7 +36,6 @@ body{min-height:100vh;}
   padding:18px 16px 40px;
 }
 .active{display:block;}
-
 .topbar{
   position:sticky;
   top:0;
@@ -86,7 +85,6 @@ body{min-height:100vh;}
   font-size:13px;
   font-weight:900;
 }
-
 .card{
   background:var(--panel);
   border:1px solid var(--line);
@@ -95,7 +93,6 @@ body{min-height:100vh;}
   box-shadow:var(--shadow);
 }
 .card + .card{margin-top:16px;}
-
 .section-head{
   display:flex;
   justify-content:space-between;
@@ -113,7 +110,6 @@ body{min-height:100vh;}
   color:var(--muted);
   font-size:14px;
 }
-
 .btn{
   border:none;
   border-radius:14px;
@@ -138,7 +134,6 @@ body{min-height:100vh;}
   color:#222;
 }
 .btn-block{width:100%;}
-
 .grid{
   display:grid;
   grid-template-columns:repeat(auto-fit,minmax(240px,1fr));
@@ -204,7 +199,6 @@ body{min-height:100vh;}
   font-size:13px;
   color:var(--muted);
 }
-
 .inline-summary{
   margin-top:18px;
   background:#fff;
@@ -233,13 +227,11 @@ body{min-height:100vh;}
   font-size:24px;
   font-weight:900;
 }
-
 .checkout-panel{
   display:none;
   margin-top:18px;
 }
 .checkout-panel.show{display:block;}
-
 .step-badge{
   display:inline-block;
   background:#f2f2f2;
@@ -264,7 +256,6 @@ body{min-height:100vh;}
   font-weight:900;
   margin-top:14px;
 }
-
 label{
   display:block;
   margin:14px 0 8px;
@@ -281,7 +272,6 @@ input,select{
   outline:none;
 }
 input:focus,select:focus{border-color:#cfcfcf;}
-
 .small{
   color:var(--muted);
   font-size:13px;
@@ -329,7 +319,6 @@ input:focus,select:focus{border-color:#cfcfcf;}
   gap:12px;
   margin-top:18px;
 }
-
 .modal{
   position:fixed;
   inset:0;
@@ -368,7 +357,6 @@ input:focus,select:focus{border-color:#cfcfcf;}
   font-size:20px;
   font-weight:900;
 }
-
 .toast{
   position:fixed;
   left:50%;
@@ -383,7 +371,6 @@ input:focus,select:focus{border-color:#cfcfcf;}
   display:none;
   box-shadow:0 12px 28px rgba(0,0,0,.18);
 }
-
 .status-pill{
   display:inline-flex;
   align-items:center;
@@ -399,7 +386,6 @@ input:focus,select:focus{border-color:#cfcfcf;}
 .status-done{ background:#ecfdf3; color:#15803d; }
 .status-cancel{ background:#fef2f2; color:#b91c1c; }
 .status-unknown{ background:#f3f4f6; color:#4b5563; }
-
 @media (max-width:768px){
   .brand-title{font-size:22px;}
   .section-title{font-size:24px;}
@@ -473,14 +459,28 @@ input:focus,select:focus{border-color:#cfcfcf;}
     </div>
 
     <div class="card">
-      <label>取餐時間</label>
-      <select id="pickupTime"></select>
+      <label>取餐方式</label>
+      <select id="pickupMode" onchange="handlePickupModeChange()">
+        <option value="onsite">現場取餐（盡快）</option>
+        <option value="reserve">預約取餐</option>
+      </select>
+
+      <div id="reserveFields" style="display:none;">
+        <label>預約日期</label>
+        <select id="pickupDate" onchange="updatePickupTimeOptions()"></select>
+
+        <label>預約時間</label>
+        <select id="pickupTime"></select>
+
+        <div class="small" id="reserveHint"></div>
+      </div>
 
       <label>付款方式</label>
       <select id="payMethod" onchange="toggleContactFields()">
         <option value="LINEPAY">LINE Pay</option>
         <option value="現金">現場付款</option>
       </select>
+      <div id="payMethodHint" class="small" style="margin-top:8px;"></div>
 
       <div id="contactFields">
         <label>姓名</label>
@@ -538,12 +538,14 @@ input:focus,select:focus{border-color:#cfcfcf;}
 
 <script>
 const GAS_API = "https://script.google.com/macros/s/AKfycbz0HQ7EsRj1kFhP-UT9DIn90WgXt7q-H8vkEh3fD79_4BuCm5HnCFGF9q3h1mf6pY4s/exec";
-
 const USE_LIFF = false;
 const LIFF_ID = "請改成你的 LIFF ID";
-
 const STORAGE_KEY = "fanwan_last_order";
 const AUTO_REFRESH_MS = 20000;
+
+const BUSINESS_OPEN = { h:10, m:30 };
+const BUSINESS_CLOSE = { h:19, m:0 };
+const MIN_RESERVE_MINUTES = 60;
 
 const menuItems = [
   { n:"招牌午餐肉", p:65, d:"經典熱銷，鹹香順口" },
@@ -563,6 +565,135 @@ let currentStatus = "已成立";
 let successRefreshTimer = null;
 let queryRefreshTimer = null;
 let customerLineUserId = "";
+
+function pad2(v){ return String(v).padStart(2,"0"); }
+
+function formatPickupDisplay(value){
+  if(!value) return "";
+  const str = String(value).trim();
+  if(str === "現場取餐" || str.includes("現場取餐")) return "現場取餐";
+
+  const m = str.match(/^(\d{4})-(\d{2})-(\d{2}) (\d{2}):(\d{2})$/);
+  if(m){
+    let hh = parseInt(m[4], 10);
+    const ap = hh >= 12 ? "下午" : "上午";
+    hh = hh % 12;
+    if(hh === 0) hh = 12;
+    return `${m[1]}/${m[2]}/${m[3]} ${ap} ${pad2(hh)}:${m[5]}`;
+  }
+
+  return str;
+}
+
+function getNowTaipei(){
+  const now = new Date();
+  return new Date(now.toLocaleString("en-US", { timeZone:"Asia/Taipei" }));
+}
+
+function addDays(date, days){
+  const d = new Date(date);
+  d.setDate(d.getDate() + days);
+  return d;
+}
+
+function buildDateTimeString(dateObj, hhmm){
+  const [h,m] = hhmm.split(":").map(Number);
+  return `${dateObj.getFullYear()}-${pad2(dateObj.getMonth()+1)}-${pad2(dateObj.getDate())} ${pad2(h)}:${pad2(m)}`;
+}
+
+function generateReserveDateOptions(){
+  const select = document.getElementById("pickupDate");
+  const now = getNowTaipei();
+  const options = [
+    { label:"今天", value:"today", date:addDays(now,0) },
+    { label:"明天", value:"tomorrow", date:addDays(now,1) },
+    { label:"後天", value:"dayafter", date:addDays(now,2) }
+  ];
+
+  select.innerHTML = options.map(o => {
+    const d = o.date;
+    const text = `${o.label}（${d.getFullYear()}/${pad2(d.getMonth()+1)}/${pad2(d.getDate())}）`;
+    return `<option value="${o.value}">${text}</option>`;
+  }).join("");
+}
+
+function updatePickupTimeOptions(){
+  const pickupDate = document.getElementById("pickupDate").value;
+  const select = document.getElementById("pickupTime");
+  const hint = document.getElementById("reserveHint");
+
+  const now = getNowTaipei();
+  let baseDate = addDays(now, 0);
+  if(pickupDate === "tomorrow") baseDate = addDays(now, 1);
+  if(pickupDate === "dayafter") baseDate = addDays(now, 2);
+
+  const start = new Date(baseDate);
+  start.setHours(BUSINESS_OPEN.h, BUSINESS_OPEN.m, 0, 0);
+
+  const end = new Date(baseDate);
+  end.setHours(BUSINESS_CLOSE.h, BUSINESS_CLOSE.m, 0, 0);
+
+  const minReserve = new Date(now.getTime() + MIN_RESERVE_MINUTES * 60000);
+
+  const opts = [];
+  let cur = new Date(start);
+  while(cur <= end){
+    if(cur.getTime() >= minReserve.getTime()){
+      opts.push(`${pad2(cur.getHours())}:${pad2(cur.getMinutes())}`);
+    }
+    cur = new Date(cur.getTime() + 30 * 60000);
+  }
+
+  if(opts.length === 0){
+    select.innerHTML = `<option value="">目前無可預約時段</option>`;
+    hint.innerText = "預約時間需至少提前 1 小時，請改選其他日期。";
+    return;
+  }
+
+  select.innerHTML = opts.map(t => `<option value="${t}">${t}</option>`).join("");
+  hint.innerText = "預約訂單需至少提前 1 小時，且將於取餐前 15 分鐘進入店家出單流程。";
+}
+
+function handlePickupModeChange(){
+  const mode = document.getElementById("pickupMode").value;
+  const reserveFields = document.getElementById("reserveFields");
+  const payMethod = document.getElementById("payMethod");
+  const payMethodHint = document.getElementById("payMethodHint");
+
+  if(mode === "onsite"){
+    reserveFields.style.display = "none";
+    payMethod.innerHTML = `
+      <option value="LINEPAY">LINE Pay</option>
+      <option value="現金">現場付款</option>
+    `;
+    payMethodHint.innerText = "現場取餐可選 LINE Pay 或現場付款";
+  }else{
+    reserveFields.style.display = "block";
+    generateReserveDateOptions();
+    updatePickupTimeOptions();
+    payMethod.innerHTML = `<option value="LINEPAY">LINE Pay</option>`;
+    payMethodHint.innerText = "預約訂單僅提供 LINE Pay 付款";
+  }
+
+  toggleContactFields();
+}
+
+function getSelectedPickupValue(){
+  const mode = document.getElementById("pickupMode").value;
+  if(mode === "onsite") return "現場取餐";
+
+  const dateKey = document.getElementById("pickupDate").value;
+  const time = document.getElementById("pickupTime").value;
+
+  if(!time) return "";
+
+  const now = getNowTaipei();
+  let dateObj = addDays(now, 0);
+  if(dateKey === "tomorrow") dateObj = addDays(now, 1);
+  if(dateKey === "dayafter") dateObj = addDays(now, 2);
+
+  return buildDateTimeString(dateObj, time);
+}
 
 function showPage(id){
   document.querySelectorAll(".page").forEach(p => p.classList.remove("active"));
@@ -626,7 +757,7 @@ function normalizeStatus(status){
 
   if(
     s.includes("成立") || s.includes("已下單") || s.includes("收到訂單") ||
-    s.includes("created") || s.includes("received")
+    s.includes("created") || s.includes("received") || s.includes("待列印")
   ) return "已成立";
 
   return String(status || "").trim();
@@ -647,9 +778,10 @@ function renderStatusPill(status){
   return `<span class="status-pill ${getStatusClass(s)}">目前狀態：${s}</span>`;
 }
 
-function renderPickupAlert(status, seq){
+function renderPickupAlert(status, pickupText, seq){
   const s = normalizeStatus(status);
   const div = document.getElementById("successPickupAlert");
+  const isReserve = pickupText && pickupText !== "現場取餐";
 
   if(s === "可取餐"){
     div.innerHTML = `
@@ -665,7 +797,7 @@ function renderPickupAlert(status, seq){
     div.innerHTML = `
       <div class="pickup-alert" style="background:#eef6ff;border-color:#d6e8ff;">
         <div style="font-weight:900;font-size:18px;">👨‍🍳 餐點製作中</div>
-        <div style="margin-top:8px;">請稍候，系統會自動更新最新狀態。</div>
+        <div style="margin-top:8px;">${isReserve ? "你的預約餐點已進入製作流程，請依預定時間前往取餐。" : "請稍候，系統會自動更新最新狀態。"}</div>
       </div>
     `;
     return;
@@ -676,6 +808,17 @@ function renderPickupAlert(status, seq){
       <div class="pickup-alert" style="background:#ecfdf3;border-color:#ccefd9;">
         <div style="font-weight:900;font-size:18px;">✅ 訂單已完成</div>
         <div style="margin-top:8px;">若已取餐完成，可直接關閉此畫面。</div>
+      </div>
+    `;
+    return;
+  }
+
+  if(isReserve){
+    div.innerHTML = `
+      <div class="pickup-alert" style="background:#eef6ff;border-color:#d6e8ff;">
+        <div style="font-weight:900;font-size:18px;">🕒 預約提醒</div>
+        <div style="margin-top:8px;">你的預約取餐時間為：<b>${pickupText}</b></div>
+        <div style="margin-top:4px;">店家會在取餐前安排出單與製作，請於預約時間前後到店取餐。</div>
       </div>
     `;
     return;
@@ -693,7 +836,7 @@ function updateLineNotifyUI(){
     hint.innerText = "你已綁定 LINE，可取餐時系統會自動通知你。";
   }else{
     badge.style.display = "none";
-    hint.innerText = "目前未綁定 LINE 通知；若日後接上 LIFF，客人可收到可取餐 LINE 訊息。";
+    hint.innerText = "目前未綁定 LINE 通知；仍可使用本頁或查詢訂單查看狀態。";
   }
 }
 
@@ -705,7 +848,6 @@ async function initLineIdentity(){
 
   try{
     if(typeof liff === "undefined"){
-      console.warn("LIFF SDK 尚未載入");
       updateLineNotifyUI();
       return;
     }
@@ -721,7 +863,6 @@ async function initLineIdentity(){
     customerLineUserId = profile.userId || "";
     updateLineNotifyUI();
   }catch(err){
-    console.error("LIFF 初始化失敗：", err);
     updateLineNotifyUI();
   }
 }
@@ -733,11 +874,10 @@ function resetToOrderPage(){
   currentStatus = "已成立";
   document.getElementById("customerName").value = "";
   document.getElementById("customerPhone").value = "";
-  document.getElementById("payMethod").value = "LINEPAY";
   document.getElementById("submitBtn").disabled = false;
   document.getElementById("submitBtn").innerText = "確認送出訂單";
-  generateTimeOptions();
-  toggleContactFields();
+  document.getElementById("pickupMode").value = "onsite";
+  handlePickupModeChange();
   renderMenu();
   updateCartUI();
   hideCheckout(true);
@@ -844,16 +984,6 @@ function updateCartUI(){
   updateInlineSummary();
 }
 
-function generateTimeOptions(){
-  let opts = `<option value="現場取餐">現場取餐（盡快）</option>`;
-  for(let h=11; h<=19; h++){
-    const hh = String(h).padStart(2,"0");
-    opts += `<option value="${hh}:00">${hh}:00</option>`;
-    if(h !== 19) opts += `<option value="${hh}:30">${hh}:30</option>`;
-  }
-  document.getElementById("pickupTime").innerHTML = opts;
-}
-
 function toggleContactFields(){
   const payMethod = document.getElementById("payMethod").value;
   const hint = document.getElementById("contactHint");
@@ -884,23 +1014,25 @@ function renderSuccessBox(data = {}){
   const seq = data.seq || lastSeq || "";
   const orderId = data.orderId || lastOrderId || "";
   const status = normalizeStatus(data.status || currentStatus || "已成立");
+  const pickupText = formatPickupDisplay(data.pickup || "");
 
   document.getElementById("successDetail").innerHTML = `
     <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap;">
       <div>
         <div><b>取餐號：</b>${seq}</div>
         <div><b>訂單編號：</b>${orderId}</div>
+        <div><b>取餐時間：</b>${pickupText || "現場取餐"}</div>
       </div>
       <div>${renderStatusPill(status)}</div>
     </div>
 
-    <div style="margin-top:12px;"><b>取餐提醒：</b></div>
-    <div>請記住你的取餐號碼，到店後可直接報號取餐。</div>
+    <div style="margin-top:12px;"><b>提醒：</b></div>
+    <div>${pickupText && pickupText !== "現場取餐" ? "這是預約訂單，店家會依預定時間安排出單與製作。" : "請記住你的取餐號碼，到店後可直接報號取餐。"}</div>
     <div>本頁會每 20 秒自動刷新一次訂單狀態。</div>
     <div>${customerLineUserId ? "你已綁定 LINE，若店家改為可取餐，系統也會推送 LINE 通知。" : "目前此裝置未綁定 LINE 推播，仍可用本頁或查詢訂單查看狀態。"}</div>
   `;
 
-  renderPickupAlert(status, seq);
+  renderPickupAlert(status, pickupText, seq);
 }
 
 async function fetchOrderStatusById(id){
@@ -930,22 +1062,22 @@ async function refreshSuccessStatus(showChangedToast = false){
     renderSuccessBox({
       seq: lastSeq,
       orderId: last.orderId || lastOrderId || "",
-      status: newStatus
+      status: newStatus,
+      pickup: res.pickup || last.pickup || ""
     });
 
     saveLastOrder({
       orderId: last.orderId || lastOrderId || "",
       seq: lastSeq,
       lookupId: last.lookupId,
-      status: newStatus
+      status: newStatus,
+      pickup: res.pickup || last.pickup || ""
     });
 
     if(showChangedToast && newStatus !== oldStatus){
       showToast(`訂單狀態已更新：${newStatus}`);
     }
-  }catch(err){
-    console.error("refreshSuccessStatus error:", err);
-  }
+  }catch(err){}
 }
 
 function startSuccessAutoRefresh(){
@@ -987,9 +1119,21 @@ async function submitOrder(){
     return;
   }
 
+  const mode = document.getElementById("pickupMode").value;
   const payMethod = document.getElementById("payMethod").value;
   const customerName = document.getElementById("customerName").value.trim();
   const customerPhone = document.getElementById("customerPhone").value.trim();
+  const pickupValue = getSelectedPickupValue();
+
+  if(mode === "reserve" && !pickupValue){
+    alert("請選擇有效的預約日期與時間");
+    return;
+  }
+
+  if(mode === "reserve" && payMethod !== "LINEPAY"){
+    alert("預約訂單僅能使用 LINE Pay");
+    return;
+  }
 
   if(payMethod === "LINEPAY" && (!customerName || !customerPhone)){
     alert("LINE Pay 訂單請填寫姓名與電話");
@@ -1003,7 +1147,7 @@ async function submitOrder(){
   const orderData = {
     items: Object.keys(cart).map(k => `${k}x${cart[k]}`).join(","),
     total: getCartTotal(),
-    pickupTime: document.getElementById("pickupTime").value,
+    pickupTime: pickupValue,
     payMethod,
     customerName,
     customerPhone,
@@ -1034,13 +1178,15 @@ async function submitOrder(){
         orderId: lastOrderId,
         seq: lastSeq,
         lookupId: lastOrderId || lastSeq,
-        status: currentStatus
+        status: currentStatus,
+        pickup: pickupValue
       });
 
       renderSuccessBox({
         seq: lastSeq,
         orderId: lastOrderId,
-        status: currentStatus
+        status: currentStatus,
+        pickup: pickupValue
       });
 
       showPage("successPage");
@@ -1098,6 +1244,7 @@ async function queryOrder(autoMode = false, silent = false){
 
     const seq = res.seqId || "";
     const status = normalizeStatus(res.status || "");
+    const pickupText = formatPickupDisplay(res.pickup || "");
     const pickupBox = status === "可取餐"
       ? `
         <div class="pickup-alert" style="margin-top:14px;">
@@ -1109,7 +1256,7 @@ async function queryOrder(autoMode = false, silent = false){
       ? `
         <div class="pickup-alert" style="margin-top:14px;background:#eef6ff;border-color:#d6e8ff;">
           <div style="font-weight:900;font-size:18px;">👨‍🍳 餐點製作中</div>
-          <div style="margin-top:8px;">系統會持續自動更新目前狀態。</div>
+          <div style="margin-top:8px;">${pickupText && pickupText !== "現場取餐" ? "預約餐點正在準備中，請依預定時間到店。" : "系統會持續自動更新目前狀態。"}</div>
         </div>
       `
       : status === "已完成"
@@ -1117,6 +1264,14 @@ async function queryOrder(autoMode = false, silent = false){
         <div class="pickup-alert" style="margin-top:14px;background:#ecfdf3;border-color:#ccefd9;">
           <div style="font-weight:900;font-size:18px;">✅ 訂單已完成</div>
           <div style="margin-top:8px;">此筆訂單已完成處理。</div>
+        </div>
+      `
+      : pickupText && pickupText !== "現場取餐"
+      ? `
+        <div class="pickup-alert" style="margin-top:14px;background:#eef6ff;border-color:#d6e8ff;">
+          <div style="font-weight:900;font-size:18px;">🕒 預約提醒</div>
+          <div style="margin-top:8px;">預約時間：<b>${pickupText}</b></div>
+          <div style="margin-top:4px;">店家會在接近取餐時間時安排出單與製作。</div>
         </div>
       `
       : "";
@@ -1128,7 +1283,7 @@ async function queryOrder(autoMode = false, silent = false){
           <div>${renderStatusPill(status)}</div>
         </div>
         <div style="margin-top:10px;"><b>餐點內容：</b><br>${String(res.items || "").replaceAll(",", "<br>")}</div>
-        <div><b>取餐時間：</b>${res.pickup || ""}</div>
+        <div><b>取餐時間：</b>${pickupText || ""}</div>
         <div><b>姓名：</b>${res.customerName || "未填"}</div>
         <div><b>電話：</b>${res.customerPhone || "未填"}</div>
       </div>
@@ -1141,7 +1296,8 @@ async function queryOrder(autoMode = false, silent = false){
       orderId: old.orderId || lastOrderId || "",
       seq: seq || old.seq || "",
       lookupId: id,
-      status: status || old.status || ""
+      status: status || old.status || "",
+      pickup: res.pickup || old.pickup || ""
     });
 
     if(silent && oldStatus && status !== oldStatus){
@@ -1163,13 +1319,15 @@ function showSuccessIfNeeded(){
       orderId: lastOrderId,
       seq: lastSeq,
       lookupId: lastOrderId || lastSeq,
-      status: currentStatus
+      status: currentStatus,
+      pickup: ""
     });
 
     renderSuccessBox({
       seq: lastSeq,
       orderId: lastOrderId,
-      status: currentStatus
+      status: currentStatus,
+      pickup: ""
     });
 
     showPage("successPage");
@@ -1202,17 +1360,13 @@ window.addEventListener("beforeunload", function(e){
 });
 
 renderMenu();
-generateTimeOptions();
-toggleContactFields();
+handlePickupModeChange();
 updateCartUI();
 updateLineNotifyUI();
 showSuccessIfNeeded();
 restoreOrderQueryIfNeeded();
 initLineIdentity();
 </script>
-
-<!-- 要啟用 LIFF 才需要取消註解 -->
 <!-- <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script> -->
-
 </body>
 </html>
