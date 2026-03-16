@@ -902,6 +902,9 @@ function buildKitchenReceiptCanvas(o){
 function mergeReceiptCanvases(topReceipt, bottomReceipt){
   const gap = 36;
 
+  // 底部額外留白，讓最後更好撕紙
+  const bottomPadding = 96;
+
   const topHeight = Math.ceil(topReceipt.finalHeight);
   const bottomHeight = Math.ceil(bottomReceipt.finalHeight);
 
@@ -909,7 +912,7 @@ function mergeReceiptCanvases(topReceipt, bottomReceipt){
   const finalCtx = finalCanvas.getContext("2d");
 
   finalCanvas.width = Math.max(topReceipt.canvas.width, bottomReceipt.canvas.width);
-  finalCanvas.height = topHeight + gap + bottomHeight;
+  finalCanvas.height = topHeight + gap + bottomHeight + bottomPadding;
 
   finalCtx.fillStyle = "#FFFFFF";
   finalCtx.fillRect(0, 0, finalCanvas.width, finalCanvas.height);
@@ -939,10 +942,9 @@ async function printOrderLabel(o){
 
   const customerReceipt = buildCustomerReceiptCanvas(o);
   const kitchenReceipt = buildKitchenReceiptCanvas(o);
-
   const finalCanvas = mergeReceiptCanvases(customerReceipt, kitchenReceipt);
 
-  await printCanvasToPrinter(finalCanvas, finalCanvas.height + 20);
+  await printCanvasToPrinter(finalCanvas, finalCanvas.height);
 }
 
 async function printCanvasToPrinter(canvas, finalHeight){
@@ -969,7 +971,7 @@ async function printCanvasToPrinter(canvas, finalHeight){
   const header = new TextEncoder().encode(
     `SIZE 48 mm, ${mmHeight} mm\r\nGAP 2 mm, 0 mm\r\nCLS\r\nBITMAP 0,0,48,${height},0,`
   );
-  const footer = new TextEncoder().encode(`\r\nPRINT 1,1\r\nFEED 60 mm\r\n`);
+  const footer = new TextEncoder().encode(`\r\nPRINT 1,1\r\nFEED 20 mm\r\n`);
 
   const buf = new Uint8Array(header.length + bitmap.length + footer.length);
   buf.set(header, 0);
