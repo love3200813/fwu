@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>飯丸屋 POS v35</title>
+<title>飯丸屋 POS v10.0.0</title>
 <style>
 body{
   margin:0;
@@ -56,9 +56,7 @@ body{
   padding:18px;
   border:1px solid #333;
 }
-.cash-panel.show{
-  display:block;
-}
+.cash-panel.show{display:block;}
 .cash-title{
   font-size:24px;
   font-weight:900;
@@ -256,7 +254,6 @@ body{
   color:#aaa;
   padding:20px;
 }
-
 @media (max-width:768px){
   .wrap{display:block;}
   .sidebar{width:100%;}
@@ -332,49 +329,71 @@ function setMsg(text){
   document.getElementById("msg").innerText = text || "";
 }
 
+function pad2(v){ return String(v).padStart(2,"0"); }
+
+function playBeep(){
+  try{
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    const oscillator = ctx.createOscillator();
+    const gain = ctx.createGain();
+    oscillator.type = "sine";
+    oscillator.frequency.value = 880;
+    oscillator.connect(gain);
+    gain.connect(ctx.destination);
+    gain.gain.setValueAtTime(0.05, ctx.currentTime);
+    oscillator.start();
+    oscillator.stop(ctx.currentTime + 0.15);
+  }catch(err){}
+}
+
+function parsePickupString(value){
+  const str = String(value || "").trim();
+  if(!str || str === "現場取餐" || str.includes("現場取餐")){
+    return null;
+  }
+  const m = str.match(/^(\d{4})-(\d{2})-(\d{2}) (\d{2}):(\d{2})$/);
+  if(!m) return null;
+  return new Date(
+    Number(m[1]),
+    Number(m[2]) - 1,
+    Number(m[3]),
+    Number(m[4]),
+    Number(m[5]),
+    0,
+    0
+  );
+}
+
 function formatPickupDisplay(value){
-  if(!value) return "";
-
-  const str = String(value).trim();
-
-  if(str === "現場取餐" || str.includes("現場取餐")){
+  const str = String(value || "").trim();
+  if(!str || str === "現場取餐" || str.includes("現場取餐")){
     return "現場取餐";
   }
 
-  const timeMatch = str.match(/^(\d{1,2}):(\d{2})(?::(\d{2}))?$/);
-  if(timeMatch){
-    const now = new Date();
-    const yyyy = now.getFullYear();
-    const mm = String(now.getMonth() + 1).padStart(2, "0");
-    const dd = String(now.getDate()).padStart(2, "0");
-
-    let hh = parseInt(timeMatch[1], 10);
-    const mi = timeMatch[2];
-    const ap = hh >= 12 ? "下午" : "上午";
-
-    hh = hh % 12;
-    if(hh === 0) hh = 12;
-
-    return `${yyyy}/${mm}/${dd} ${ap} ${String(hh).padStart(2, "0")}:${mi}`;
-  }
-
-  const d = new Date(str);
-  if(!isNaN(d)){
-    const yyyy = d.getFullYear();
-    const mm = String(d.getMonth() + 1).padStart(2, "0");
-    const dd = String(d.getDate()).padStart(2, "0");
-
+  const d = parsePickupString(str);
+  if(d){
     let hh = d.getHours();
-    const mi = String(d.getMinutes()).padStart(2, "0");
     const ap = hh >= 12 ? "下午" : "上午";
-
     hh = hh % 12;
     if(hh === 0) hh = 12;
-
-    return `${yyyy}/${mm}/${dd} ${ap} ${String(hh).padStart(2, "0")}:${mi}`;
+    return `${d.getFullYear()}/${pad2(d.getMonth()+1)}/${pad2(d.getDate())} ${ap} ${pad2(hh)}:${pad2(d.getMinutes())}`;
   }
 
   return str;
+}
+
+function shouldPrintNow(order){
+  const raw = String(order.rawPickup || order.pickup || "").trim();
+
+  if(!raw || raw === "現場取餐" || raw.includes("現場取餐")){
+    return true;
+  }
+
+  const pickup = parsePickupString(raw);
+  if(!pickup) return false;
+
+  const printAt = new Date(pickup.getTime() - 15 * 60 * 1000);
+  return Date.now() >= printAt.getTime();
 }
 
 function toggleCashPanel(){
@@ -485,7 +504,8 @@ async function submitCashOrder(){
     const res = await response.json();
 
     if(res && res.status === "success"){
-      setMsg(`現場訂單 ${res.seq || ""} 已建立`);
+      setMsg(`現場訂單 ${res.seq || ""} 已建立，等待自動列印`);
+      playBeep();
       clearCashCart();
       await fetchOrders();
       return;
@@ -493,7 +513,6 @@ async function submitCashOrder(){
 
     alert("送單失敗：" + JSON.stringify(res));
   }catch(err){
-    console.error("submitCashOrder 失敗：", err);
     alert("送單失敗：" + err.message);
   }finally{
     btn.disabled = false;
@@ -530,11 +549,9 @@ async function connectUSB(){
     document.getElementById("usbStatus").innerText =
       `USB 已連線：${printerDevice.productName || "未知裝置"} / Endpoint ${endpointOut}`;
     setMsg("USB 連線成功，系統會自動列印待列印訂單");
-
     await fetchOrders();
 
   }catch(err){
-    console.error(err);
     alert("USB 連線失敗：" + err.message);
     setMsg("USB 連線失敗");
   }
@@ -547,7 +564,6 @@ async function fetchOrders(){
     renderOrders(data);
     await autoPrint(data);
   }catch(err){
-    console.error("fetchOrders 失敗：", err);
     setMsg("抓訂單失敗：" + err.message);
   }
 }
@@ -562,13 +578,15 @@ function renderOrders(list){
 
   div.innerHTML = list.map(o => {
     const isPendingPay = o.status === "待付款";
-    const pickupText = formatPickupDisplay(o.pickup);
+    const pickupText = formatPickupDisplay(o.rawPickup || o.pickup);
+    const reserveHint = (o.rawPickup && o.rawPickup !== "現場取餐") ? `<div class="meta">預約單：將於取餐前 15 分鐘自動出單</div>` : "";
 
     return `
       <div class="card">
         <div class="seq">${o.seq || ""}</div>
         <div class="meta">狀態：${o.status || ""} ｜ 付款：${o.pay || ""}</div>
         <div class="meta">取餐：${pickupText}</div>
+        ${reserveHint}
         ${o.customerName ? `<div class="meta">姓名：${o.customerName}</div>` : ""}
         ${o.customerPhone ? `<div class="meta">電話：${o.customerPhone}</div>` : ""}
         <div class="content">${String(o.content || "").replaceAll(",", "<br>")}</div>
@@ -591,14 +609,18 @@ async function autoPrint(list){
 
   for(const o of list){
     if(o.status === "待列印" && !printedOrders.has(o.id)){
+      if(!shouldPrintNow(o)){
+        continue;
+      }
+
       try{
-        setMsg(`正在列印 ${o.seq}...`);
+        setMsg(`提醒店員：${o.seq} 可出單，正在列印...`);
+        playBeep();
         await printOrderLabel(o);
         printedOrders.add(o.id);
         await doUpdateStatus(o.row, "製作中");
         setMsg(`${o.seq} 已送出列印`);
       }catch(err){
-        console.error("列印失敗：", err);
         setMsg(`列印失敗：${err.message}`);
       }
     }
@@ -615,7 +637,6 @@ async function manualPrint(encoded){
     await printOrderLabel(o);
     setMsg(`${o.seq} 補印完成`);
   }catch(err){
-    console.error("補印失敗：", err);
     alert("補印失敗：" + err.message);
   }
 }
@@ -623,15 +644,18 @@ async function manualPrint(encoded){
 async function setStatus(row, status){
   try{
     const data = await doUpdateStatus(row, status);
-
     if(data && data.success === false){
       alert(data.message || "此筆訂單目前不可操作");
       return;
     }
 
+    if(status === "可取餐"){
+      setMsg("已提醒店員與客人：此筆訂單可取餐");
+      playBeep();
+    }
+
     await fetchOrders();
   }catch(err){
-    console.error("setStatus 失敗：", err);
     alert("操作失敗：" + err.message);
   }
 }
@@ -655,7 +679,7 @@ async function printOrderLabel(o){
   const items = String(o.content || "").split(",");
   const width = 384;
   const lineHeight = 52;
-  let estimatedHeight = 420 + (items.length * lineHeight);
+  let estimatedHeight = 440 + (items.length * lineHeight);
 
   const canvas = document.createElement("canvas");
   const ctx = canvas.getContext("2d");
@@ -676,7 +700,7 @@ async function printOrderLabel(o){
   ctx.fillText(String(o.seq || ""), 10, y); y += 58;
 
   ctx.font = "28px sans-serif";
-  ctx.fillText("取餐：" + formatPickupDisplay(o.pickup), 10, y); y += 42;
+  ctx.fillText("取餐：" + formatPickupDisplay(o.rawPickup || o.pickup), 10, y); y += 42;
   ctx.fillText("付款：" + String(o.pay || ""), 10, y); y += 42;
 
   if(o.customerName){
