@@ -1,0 +1,371 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>飯丸屋 POS v6</title>
+<style>
+body{
+  margin:0;
+  font-family:"Microsoft JhengHei",sans-serif;
+  background:#111;
+  color:#fff;
+}
+.wrap{display:flex;min-height:100vh;}
+.sidebar{
+  width:280px;
+  background:#1b1b1b;
+  padding:20px;
+  box-sizing:border-box;
+}
+.sidebar h1{
+  font-size:32px;
+  margin:0 0 20px 0;
+}
+.main{
+  flex:1;
+  padding:20px;
+  box-sizing:border-box;
+}
+.btn{
+  width:100%;
+  border:none;
+  padding:14px;
+  margin-bottom:10px;
+  border-radius:12px;
+  cursor:pointer;
+  font-size:16px;
+  font-weight:800;
+}
+.btn-usb{background:#f1f1f1;color:#111;}
+.btn-info{background:#3498db;color:#fff;}
+.usb-status,.msg{
+  font-size:14px;
+  line-height:1.6;
+  margin-top:10px;
+}
+.usb-status{color:#7CFC98;}
+.msg{color:#ffd166;}
+.grid{
+  display:grid;
+  grid-template-columns:repeat(auto-fit,minmax(320px,1fr));
+  gap:15px;
+}
+.card{
+  background:#2b2b2b;
+  border-radius:14px;
+  padding:16px;
+  box-sizing:border-box;
+  border-left:6px solid #f39c12;
+}
+.seq{
+  font-size:30px;
+  font-weight:900;
+  color:#f39c12;
+}
+.meta{
+  margin-top:8px;
+  color:#ccc;
+  font-size:14px;
+}
+.content{
+  margin-top:12px;
+  font-size:22px;
+  line-height:1.6;
+  white-space:pre-line;
+}
+.total{
+  margin-top:12px;
+  font-size:28px;
+  font-weight:900;
+}
+.tag{
+  display:inline-block;
+  padding:4px 10px;
+  border-radius:20px;
+  font-size:12px;
+  margin-top:10px;
+  background:#444;
+}
+.actions{
+  display:flex;
+  gap:8px;
+  margin-top:16px;
+  flex-wrap:wrap;
+}
+.sbtn{
+  flex:1;
+  min-width:90px;
+  border:none;
+  padding:11px;
+  border-radius:10px;
+  cursor:pointer;
+  font-size:14px;
+  font-weight:700;
+}
+.reprint{ background:#3498db; color:#fff; }
+.notify{ background:#9b59b6; color:#fff; }
+.done{ background:#2ecc71; color:#fff; }
+.cancel{ background:#e74c3c; color:#fff; }
+.empty{
+  color:#aaa;
+  padding:20px;
+}
+@media (max-width:768px){
+  .wrap{display:block;}
+  .sidebar{width:100%;}
+  .main{padding:15px;}
+}
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <div class="sidebar">
+    <h1>🍙 飯丸屋 POS</h1>
+
+    <button class="btn btn-usb" onclick="connectUSB()">🔌 建立 USB 連線</button>
+    <button class="btn btn-info" onclick="fetchOrders()">🔄 重新整理訂單</button>
+
+    <div id="usbStatus" class="usb-status">尚未連線</div>
+    <div id="msg" class="msg"></div>
+  </div>
+
+  <div class="main">
+    <h2>即時訂單</h2>
+    <div id="orders" class="grid"></div>
+  </div>
+</div>
+
+<script>
+const GAS_API = "https://script.google.com/macros/s/AKfycbz0HQ7EsRj1kFhP-UT9DIn90WgXt7q-H8vkEh3fD79_4BuCm5HnCFGF9q3h1mf6pY4s/exec";
+
+let printerDevice = null;
+let endpointOut = null;
+let printedOrders = new Set();
+
+function setMsg(text){
+  document.getElementById("msg").innerText = text || "";
+}
+
+async function connectUSB(){
+  try{
+    setMsg("正在尋找印表機...");
+    printerDevice = await navigator.usb.requestDevice({ filters:[] });
+    await printerDevice.open();
+
+    if(printerDevice.configuration === null){
+      await printerDevice.selectConfiguration(1);
+    }
+
+    let found = false;
+    for(const iface of printerDevice.configuration.interfaces){
+      for(const alt of iface.alternates){
+        const outEp = alt.endpoints.find(e => e.direction === "out");
+        if(outEp){
+          await printerDevice.claimInterface(iface.interfaceNumber);
+          endpointOut = outEp.endpointNumber;
+          found = true;
+          break;
+        }
+      }
+      if(found) break;
+    }
+
+    if(!found) throw new Error("找不到可用的 USB 輸出端點");
+
+    document.getElementById("usbStatus").innerText =
+      `USB 已連線：${printerDevice.productName || "未知裝置"} / Endpoint ${endpointOut}`;
+    setMsg("USB 連線成功，系統會自動列印待列印訂單");
+
+    await fetchOrders();
+
+  }catch(err){
+    console.error(err);
+    alert("USB 連線失敗：" + err.message);
+    setMsg("USB 連線失敗");
+  }
+}
+
+async function fetchOrders(){
+  try{
+    const res = await fetch(GAS_API + "?action=getOrders&t=" + Date.now());
+    const data = await res.json();
+    renderOrders(data);
+    await autoPrint(data);
+  }catch(err){
+    console.error("fetchOrders 失敗：", err);
+    setMsg("抓訂單失敗：" + err.message);
+  }
+}
+
+function renderOrders(list){
+  const div = document.getElementById("orders");
+
+  if(!Array.isArray(list) || list.length === 0){
+    div.innerHTML = "<div class='empty'>目前沒有訂單</div>";
+    return;
+  }
+
+  div.innerHTML = list.map(o => `
+    <div class="card">
+      <div class="seq">${o.seq || ""}</div>
+      <div class="meta">狀態：${o.status || ""} ｜ 付款：${o.pay || ""}</div>
+      <div class="meta">取餐：${o.pickup || ""}</div>
+      ${o.customerName ? `<div class="meta">姓名：${o.customerName}</div>` : ""}
+      ${o.customerPhone ? `<div class="meta">電話：${o.customerPhone}</div>` : ""}
+      <div class="content">${String(o.content || "").replaceAll(",", "<br>")}</div>
+      <div class="total">$${o.total || 0}</div>
+      <div class="tag">${o.id || ""}</div>
+
+      <div class="actions">
+        <button class="sbtn reprint" onclick='manualPrint(${JSON.stringify(encodeURIComponent(JSON.stringify(o)))})'>補印</button>
+        <button class="sbtn notify" onclick="setStatus(${o.row}, '可取餐')">通知取餐</button>
+        <button class="sbtn done" onclick="setStatus(${o.row}, '已完成')">完成</button>
+        <button class="sbtn cancel" onclick="setStatus(${o.row}, '已作廢')">作廢</button>
+      </div>
+    </div>
+  `).join("");
+}
+
+async function autoPrint(list){
+  if(!printerDevice || !endpointOut) return;
+
+  for(const o of list){
+    if(o.status === "待列印" && !printedOrders.has(o.id)){
+      try{
+        setMsg(`正在列印 ${o.seq}...`);
+        await printOrderLabel(o);
+        printedOrders.add(o.id);
+        await updateStatus(o.row, "製作中");
+        setMsg(`${o.seq} 已送出列印`);
+      }catch(err){
+        console.error("列印失敗：", err);
+        setMsg(`列印失敗：${err.message}`);
+      }
+    }
+  }
+}
+
+async function manualPrint(encoded){
+  try{
+    const o = JSON.parse(decodeURIComponent(encoded));
+    await printOrderLabel(o);
+    setMsg(`${o.seq} 補印完成`);
+  }catch(err){
+    console.error("補印失敗：", err);
+    alert("補印失敗：" + err.message);
+  }
+}
+
+async function setStatus(row, status){
+  await updateStatus(row, status);
+  await fetchOrders();
+}
+
+async function updateStatus(row, status){
+  await fetch(
+    GAS_API +
+    "?action=updateStatus" +
+    "&row=" + encodeURIComponent(row) +
+    "&status=" + encodeURIComponent(status) +
+    "&t=" + Date.now()
+  );
+}
+
+async function printOrderLabel(o){
+  if(!printerDevice || !endpointOut){
+    throw new Error("請先建立 USB 連線");
+  }
+
+  const items = String(o.content || "").split(",");
+  const width = 384;
+  const lineHeight = 52;
+  let estimatedHeight = 360 + (items.length * lineHeight);
+
+  const canvas = document.createElement("canvas");
+  const ctx = canvas.getContext("2d");
+  canvas.width = width;
+  canvas.height = estimatedHeight;
+
+  ctx.fillStyle = "#FFFFFF";
+  ctx.fillRect(0, 0, width, estimatedHeight);
+  ctx.fillStyle = "#000000";
+  ctx.textBaseline = "top";
+
+  let y = 10;
+
+  ctx.font = "bold 50px sans-serif";
+  ctx.fillText("飯丸屋", 10, y); y += 62;
+
+  ctx.font = "bold 46px sans-serif";
+  ctx.fillText(String(o.seq || ""), 10, y); y += 58;
+
+  ctx.font = "28px sans-serif";
+  ctx.fillText("取餐：" + String(o.pickup || ""), 10, y); y += 42;
+  ctx.fillText("付款：" + String(o.pay || ""), 10, y); y += 42;
+
+  if(o.customerName){
+    ctx.fillText("姓名：" + String(o.customerName), 10, y); y += 38;
+  }
+  if(o.customerPhone){
+    ctx.fillText("電話：" + String(o.customerPhone), 10, y); y += 38;
+  }
+
+  ctx.font = "26px monospace";
+  ctx.fillText("--------------------------", 10, y); y += 38;
+
+  ctx.font = "bold 34px sans-serif";
+  for(const item of items){
+    ctx.fillText(item.trim(), 10, y);
+    y += lineHeight;
+  }
+
+  ctx.font = "26px monospace";
+  ctx.fillText("--------------------------", 10, y); y += 38;
+
+  ctx.font = "bold 46px sans-serif";
+  ctx.fillText("總計 $" + String(o.total || 0), 10, y); y += 60;
+
+  await printCanvasToPrinter(canvas, y + 30);
+}
+
+async function printCanvasToPrinter(canvas, finalHeight){
+  const width = canvas.width;
+  const height = Math.ceil(finalHeight);
+  const ctx = canvas.getContext("2d");
+  const img = ctx.getImageData(0, 0, width, height).data;
+
+  const widthBytes = 48;
+  const bitmap = new Uint8Array(widthBytes * height);
+  bitmap.fill(255);
+
+  for(let py = 0; py < height; py++){
+    for(let px = 0; px < width; px++){
+      const idx = (py * width + px) * 4;
+      const gray = (img[idx] + img[idx+1] + img[idx+2]) / 3;
+      if(img[idx+3] > 128 && gray < 180){
+        bitmap[py * widthBytes + Math.floor(px / 8)] &= ~(1 << (7 - (px % 8)));
+      }
+    }
+  }
+
+  const mmHeight = Math.max(60, Math.ceil(height / 8));
+  const header = new TextEncoder().encode(
+    `SIZE 48 mm, ${mmHeight} mm\r\nGAP 2 mm, 0 mm\r\nCLS\r\nBITMAP 0,0,48,${height},0,`
+  );
+  const footer = new TextEncoder().encode(`\r\nPRINT 1,1\r\nFEED 35 mm\r\n`);
+
+  const buf = new Uint8Array(header.length + bitmap.length + footer.length);
+  buf.set(header, 0);
+  buf.set(bitmap, header.length);
+  buf.set(footer, header.length + bitmap.length);
+
+  await printerDevice.transferOut(endpointOut, buf);
+}
+
+setInterval(fetchOrders, 3000);
+fetchOrders();
+</script>
+</body>
+</html>

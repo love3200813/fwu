@@ -1,0 +1,1218 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>飯丸屋點餐系統 v10</title>
+<style>
+:root{
+  --bg:#f5f5f2;
+  --panel:#ffffff;
+  --line:#e7e7e7;
+  --text:#1b1b1b;
+  --muted:#7a7a7a;
+  --primary:#111111;
+  --success:#1f8f55;
+  --danger:#d9534f;
+  --warning:#d98b00;
+  --info:#2563eb;
+  --shadow:0 10px 24px rgba(0,0,0,.06);
+  --radius:18px;
+}
+*{box-sizing:border-box;}
+html,body{
+  margin:0;
+  padding:0;
+  font-family:"Microsoft JhengHei",sans-serif;
+  background:var(--bg);
+  color:var(--text);
+}
+body{min-height:100vh;}
+.page{
+  display:none;
+  max-width:1100px;
+  margin:0 auto;
+  min-height:100vh;
+  padding:18px 16px 40px;
+}
+.active{display:block;}
+
+.topbar{
+  position:sticky;
+  top:0;
+  z-index:100;
+  background:rgba(245,245,242,.92);
+  backdrop-filter:blur(10px);
+  padding-bottom:12px;
+}
+.topbar-inner{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  gap:12px;
+  background:var(--panel);
+  border:1px solid var(--line);
+  border-radius:18px;
+  padding:14px 16px;
+  box-shadow:var(--shadow);
+}
+.brand-title{
+  font-size:26px;
+  font-weight:900;
+}
+.brand-sub{
+  font-size:13px;
+  color:var(--muted);
+  margin-top:4px;
+}
+.top-actions{
+  display:flex;
+  gap:10px;
+  align-items:center;
+  flex-wrap:wrap;
+}
+.top-chip{
+  background:#f3f3f3;
+  border-radius:999px;
+  padding:8px 12px;
+  font-size:13px;
+  color:#555;
+}
+.line-chip{
+  background:#ecfdf3;
+  color:#15803d;
+  border-radius:999px;
+  padding:8px 12px;
+  font-size:13px;
+  font-weight:900;
+}
+
+.card{
+  background:var(--panel);
+  border:1px solid var(--line);
+  border-radius:var(--radius);
+  padding:18px;
+  box-shadow:var(--shadow);
+}
+.card + .card{margin-top:16px;}
+
+.section-head{
+  display:flex;
+  justify-content:space-between;
+  align-items:flex-end;
+  gap:12px;
+  margin:18px 0 12px;
+  flex-wrap:wrap;
+}
+.section-title{
+  font-size:28px;
+  font-weight:900;
+  margin:0;
+}
+.section-sub{
+  color:var(--muted);
+  font-size:14px;
+}
+
+.btn{
+  border:none;
+  border-radius:14px;
+  padding:14px 16px;
+  font-size:16px;
+  font-weight:900;
+  cursor:pointer;
+  transition:.18s;
+}
+.btn:hover{transform:translateY(-1px);}
+.btn:disabled{
+  opacity:.55;
+  cursor:not-allowed;
+  transform:none;
+}
+.btn-primary{
+  background:var(--primary);
+  color:#fff;
+}
+.btn-secondary{
+  background:#f1f1f1;
+  color:#222;
+}
+.btn-block{width:100%;}
+
+.grid{
+  display:grid;
+  grid-template-columns:repeat(auto-fit,minmax(240px,1fr));
+  gap:14px;
+}
+.menu-card{
+  background:var(--panel);
+  border:1px solid var(--line);
+  border-radius:18px;
+  padding:18px;
+  box-shadow:var(--shadow);
+  display:flex;
+  flex-direction:column;
+  min-height:220px;
+}
+.menu-name{
+  font-size:20px;
+  font-weight:900;
+}
+.menu-desc{
+  color:var(--muted);
+  font-size:14px;
+  line-height:1.7;
+  margin-top:8px;
+  min-height:48px;
+}
+.menu-price{
+  margin-top:16px;
+  font-size:26px;
+  font-weight:900;
+}
+.menu-bottom{margin-top:auto;}
+.qty-wrap{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  margin-top:16px;
+  gap:10px;
+}
+.qty-box{
+  display:flex;
+  align-items:center;
+  gap:10px;
+}
+.btn-qty{
+  width:40px;
+  height:40px;
+  border:none;
+  border-radius:12px;
+  background:#f2f2f2;
+  color:#111;
+  font-size:22px;
+  font-weight:900;
+  cursor:pointer;
+}
+.qty-num{
+  min-width:28px;
+  text-align:center;
+  font-size:18px;
+  font-weight:900;
+}
+.add-tip{
+  font-size:13px;
+  color:var(--muted);
+}
+
+.inline-summary{
+  margin-top:18px;
+  background:#fff;
+  border:1px solid var(--line);
+  border-radius:20px;
+  padding:18px;
+  box-shadow:var(--shadow);
+}
+.inline-summary-top{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  gap:12px;
+  flex-wrap:wrap;
+}
+.inline-summary-title{
+  font-size:20px;
+  font-weight:900;
+}
+.inline-summary-sub{
+  color:var(--muted);
+  font-size:14px;
+  margin-top:4px;
+}
+.inline-summary-total{
+  font-size:24px;
+  font-weight:900;
+}
+
+.checkout-panel{
+  display:none;
+  margin-top:18px;
+}
+.checkout-panel.show{display:block;}
+
+.step-badge{
+  display:inline-block;
+  background:#f2f2f2;
+  color:#555;
+  border-radius:999px;
+  padding:7px 12px;
+  font-size:13px;
+  font-weight:800;
+}
+.summary-row{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  gap:12px;
+  padding:14px 0;
+  border-bottom:1px solid var(--line);
+}
+.summary-row:last-child{border-bottom:none;}
+.total{
+  text-align:right;
+  font-size:30px;
+  font-weight:900;
+  margin-top:14px;
+}
+
+label{
+  display:block;
+  margin:14px 0 8px;
+  font-size:14px;
+  font-weight:900;
+}
+input,select{
+  width:100%;
+  border:1px solid var(--line);
+  border-radius:14px;
+  background:#fff;
+  padding:14px;
+  font-size:16px;
+  outline:none;
+}
+input:focus,select:focus{border-color:#cfcfcf;}
+
+.small{
+  color:var(--muted);
+  font-size:13px;
+  line-height:1.7;
+}
+.notice{
+  background:#f7f7f7;
+  border:1px solid var(--line);
+  border-radius:14px;
+  padding:14px;
+  line-height:1.8;
+}
+.result-card{
+  background:var(--panel);
+  border:1px solid var(--line);
+  border-radius:16px;
+  padding:18px;
+  margin-top:16px;
+  line-height:1.9;
+  box-shadow:var(--shadow);
+}
+.info-box{
+  background:#eef6ff;
+  border:1px solid #d6e8ff;
+  border-radius:16px;
+  padding:18px;
+  line-height:1.9;
+}
+.pickup-alert{
+  margin-top:14px;
+  background:#fff7e8;
+  border:1px solid #ffe0a3;
+  border-radius:16px;
+  padding:16px;
+  line-height:1.9;
+}
+.empty-box{
+  text-align:center;
+  padding:22px 10px;
+  color:var(--muted);
+}
+.actions-2{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:12px;
+  margin-top:18px;
+}
+
+.modal{
+  position:fixed;
+  inset:0;
+  background:rgba(0,0,0,.35);
+  display:none;
+  align-items:center;
+  justify-content:center;
+  z-index:200;
+  padding:16px;
+}
+.modal.show{display:flex;}
+.modal-card{
+  width:min(100%,520px);
+  background:#fff;
+  border-radius:18px;
+  padding:20px;
+  box-shadow:0 20px 40px rgba(0,0,0,.18);
+}
+.modal-head{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  gap:12px;
+}
+.modal-title{
+  font-size:24px;
+  font-weight:900;
+}
+.icon-btn{
+  width:40px;
+  height:40px;
+  border:none;
+  border-radius:12px;
+  background:#f2f2f2;
+  cursor:pointer;
+  font-size:20px;
+  font-weight:900;
+}
+
+.toast{
+  position:fixed;
+  left:50%;
+  top:20px;
+  transform:translateX(-50%);
+  background:#111;
+  color:#fff;
+  padding:12px 16px;
+  border-radius:14px;
+  font-size:14px;
+  z-index:500;
+  display:none;
+  box-shadow:0 12px 28px rgba(0,0,0,.18);
+}
+
+.status-pill{
+  display:inline-flex;
+  align-items:center;
+  padding:7px 12px;
+  border-radius:999px;
+  font-size:13px;
+  font-weight:900;
+  line-height:1;
+}
+.status-created{ background:#eef2f7; color:#475569; }
+.status-making{ background:#eef6ff; color:#2563eb; }
+.status-ready{ background:#fff7e8; color:#b45309; }
+.status-done{ background:#ecfdf3; color:#15803d; }
+.status-cancel{ background:#fef2f2; color:#b91c1c; }
+.status-unknown{ background:#f3f4f6; color:#4b5563; }
+
+@media (max-width:768px){
+  .brand-title{font-size:22px;}
+  .section-title{font-size:24px;}
+  .topbar-inner{
+    flex-direction:column;
+    align-items:stretch;
+  }
+  .top-actions{
+    justify-content:space-between;
+  }
+  .actions-2{
+    grid-template-columns:1fr;
+  }
+}
+</style>
+</head>
+<body>
+
+<div id="toast" class="toast"></div>
+
+<div id="orderPage" class="page active">
+  <div class="topbar">
+    <div class="topbar-inner">
+      <div>
+        <div class="brand-title">🍙 飯丸屋沖繩飯糰</div>
+        <div class="brand-sub">直接選餐，確認後送出訂單</div>
+      </div>
+      <div class="top-actions">
+        <div class="top-chip">已選 <b id="cartCountTop">0</b> 項｜$<b id="cartTotalTop">0</b></div>
+        <div id="lineNotifyBadge" class="line-chip" style="display:none;">已綁定 LINE 取餐通知</div>
+        <button class="btn btn-secondary" onclick="openQueryModal()">查詢訂單</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="section-head">
+    <div>
+      <h2 class="section-title">步驟 1：選擇餐點</h2>
+      <div class="section-sub">選好後按下方「確認訂單」即可繼續</div>
+    </div>
+  </div>
+
+  <div id="menu" class="grid"></div>
+
+  <div class="inline-summary">
+    <div class="inline-summary-top">
+      <div>
+        <div class="inline-summary-title">目前已選餐點</div>
+        <div class="inline-summary-sub" id="inlineSummarySub">尚未選擇餐點</div>
+      </div>
+      <div class="inline-summary-total">$<span id="inlineSummaryTotal">0</span></div>
+    </div>
+
+    <div style="margin-top:16px;">
+      <button id="goCheckoutBtn" class="btn btn-primary btn-block" onclick="showCheckout()" disabled>確認訂單</button>
+    </div>
+  </div>
+
+  <div id="checkoutPanel" class="checkout-panel">
+    <div class="section-head">
+      <div>
+        <h2 class="section-title">步驟 2：確認訂單</h2>
+        <div class="section-sub">確認餐點、填寫資料、完成送單</div>
+      </div>
+      <span class="step-badge">結帳資料</span>
+    </div>
+
+    <div class="card">
+      <div id="cartSummary"></div>
+      <div class="total">總計：$<span id="checkoutTotal">0</span></div>
+    </div>
+
+    <div class="card">
+      <label>取餐時間</label>
+      <select id="pickupTime"></select>
+
+      <label>付款方式</label>
+      <select id="payMethod" onchange="toggleContactFields()">
+        <option value="LINEPAY">LINE Pay</option>
+        <option value="現金">現場付款</option>
+      </select>
+
+      <div id="contactFields">
+        <label>姓名</label>
+        <input type="text" id="customerName" placeholder="請輸入姓名">
+
+        <label>電話</label>
+        <input type="tel" id="customerPhone" placeholder="請輸入電話">
+
+        <div id="contactHint" class="small">LINE Pay 訂單必填；現場付款建議填寫方便對單</div>
+        <div id="lineNotifyHint" class="small" style="margin-top:8px;"></div>
+      </div>
+
+      <div class="actions-2">
+        <button class="btn btn-secondary" onclick="hideCheckout()">返回繼續加點</button>
+        <button id="submitBtn" class="btn btn-primary" onclick="submitOrder()">確認送出訂單</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="successPage" class="page">
+  <div class="section-head" style="margin-top:0;">
+    <div>
+      <h2 class="section-title">✅ 訂單成立</h2>
+      <div class="section-sub">已收到你的訂單</div>
+    </div>
+  </div>
+
+  <div id="successDetail" class="info-box"></div>
+  <div id="successPickupAlert"></div>
+
+  <div class="actions-2">
+    <button class="btn btn-primary" onclick="goQueryOrder()">查詢我的訂單</button>
+    <button class="btn btn-secondary" onclick="resetToOrderPage()">再點一筆</button>
+  </div>
+</div>
+
+<div id="queryModal" class="modal">
+  <div class="modal-card">
+    <div class="modal-head">
+      <div class="modal-title">查詢訂單</div>
+      <button class="icon-btn" onclick="closeQueryModal()">×</button>
+    </div>
+
+    <div style="margin-top:14px;">
+      <input type="text" id="queryInput" placeholder="請輸入訂單ID或取餐號（如 #001）">
+      <div class="actions-2">
+        <button class="btn btn-primary" onclick="queryOrder()">送出查詢</button>
+        <button class="btn btn-secondary" onclick="closeQueryModal()">關閉</button>
+      </div>
+      <div id="queryResult"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+const GAS_API = "https://script.google.com/macros/s/AKfycbz0HQ7EsRj1kFhP-UT9DIn90WgXt7q-H8vkEh3fD79_4BuCm5HnCFGF9q3h1mf6pY4s/exec";
+
+const USE_LIFF = false;
+const LIFF_ID = "請改成你的 LIFF ID";
+
+const STORAGE_KEY = "fanwan_last_order";
+const AUTO_REFRESH_MS = 20000;
+
+const menuItems = [
+  { n:"招牌午餐肉", p:65, d:"經典熱銷，鹹香順口" },
+  { n:"炸蝦塔塔", p:95, d:"炸蝦搭配塔塔醬，口感豐富" },
+  { n:"咖哩可樂餅", p:85, d:"外酥內綿，濃郁咖哩香" },
+  { n:"日式炸雞", p:90, d:"人氣炸雞，多汁帶脆" },
+  { n:"經典雙拼", p:120, d:"一次滿足雙重口味" },
+  { n:"沖繩豆乳", p:45, d:"清爽順口，解膩首選" },
+  { n:"花生醬厚牛", p:110, d:"濃厚系必點款" },
+  { n:"宇治抹茶", p:55, d:"微苦回甘，搭餐剛好" }
+];
+
+let cart = {};
+let lastOrderId = "";
+let lastSeq = "";
+let currentStatus = "已成立";
+let successRefreshTimer = null;
+let queryRefreshTimer = null;
+let customerLineUserId = "";
+
+function showPage(id){
+  document.querySelectorAll(".page").forEach(p => p.classList.remove("active"));
+  document.getElementById(id).classList.add("active");
+  window.scrollTo({ top: 0, behavior: "smooth" });
+
+  if(id === "successPage"){
+    startSuccessAutoRefresh();
+  }else{
+    stopSuccessAutoRefresh();
+  }
+}
+
+function showToast(msg){
+  const toast = document.getElementById("toast");
+  toast.innerText = msg;
+  toast.style.display = "block";
+  clearTimeout(window.toastTimer);
+  window.toastTimer = setTimeout(() => {
+    toast.style.display = "none";
+  }, 2600);
+}
+
+function saveLastOrder(data){
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+}
+function getLastOrder(){
+  try{
+    return JSON.parse(localStorage.getItem(STORAGE_KEY) || "null");
+  }catch(e){
+    return null;
+  }
+}
+function clearLastOrder(){
+  localStorage.removeItem(STORAGE_KEY);
+}
+
+function normalizeStatus(status){
+  const s = String(status || "").trim().toLowerCase();
+
+  if(!s) return "已成立";
+
+  if(
+    s.includes("可取餐") || s.includes("可領取") || s.includes("待取餐") ||
+    s.includes("ready") || s.includes("pickup")
+  ) return "可取餐";
+
+  if(
+    s.includes("製作中") || s.includes("處理中") || s.includes("準備中") ||
+    s.includes("製作") || s.includes("making") || s.includes("progress")
+  ) return "製作中";
+
+  if(
+    s.includes("已完成") || s.includes("完成") || s.includes("已取餐") ||
+    s.includes("已領取") || s.includes("done") || s.includes("complete") || s.includes("finished")
+  ) return "已完成";
+
+  if(
+    s.includes("取消") || s.includes("作廢") || s.includes("cancel") || s.includes("void")
+  ) return "已取消";
+
+  if(
+    s.includes("成立") || s.includes("已下單") || s.includes("收到訂單") ||
+    s.includes("created") || s.includes("received")
+  ) return "已成立";
+
+  return String(status || "").trim();
+}
+
+function getStatusClass(status){
+  const s = normalizeStatus(status);
+  if(s === "已成立") return "status-created";
+  if(s === "製作中") return "status-making";
+  if(s === "可取餐") return "status-ready";
+  if(s === "已完成") return "status-done";
+  if(s === "已取消") return "status-cancel";
+  return "status-unknown";
+}
+
+function renderStatusPill(status){
+  const s = normalizeStatus(status);
+  return `<span class="status-pill ${getStatusClass(s)}">目前狀態：${s}</span>`;
+}
+
+function renderPickupAlert(status, seq){
+  const s = normalizeStatus(status);
+  const div = document.getElementById("successPickupAlert");
+
+  if(s === "可取餐"){
+    div.innerHTML = `
+      <div class="pickup-alert">
+        <div style="font-weight:900;font-size:18px;">🔔 你的餐點已可取餐</div>
+        <div style="margin-top:8px;">請到店後出示或告知取餐號碼：<b>${seq || "-"}</b></div>
+      </div>
+    `;
+    return;
+  }
+
+  if(s === "製作中"){
+    div.innerHTML = `
+      <div class="pickup-alert" style="background:#eef6ff;border-color:#d6e8ff;">
+        <div style="font-weight:900;font-size:18px;">👨‍🍳 餐點製作中</div>
+        <div style="margin-top:8px;">請稍候，系統會自動更新最新狀態。</div>
+      </div>
+    `;
+    return;
+  }
+
+  if(s === "已完成"){
+    div.innerHTML = `
+      <div class="pickup-alert" style="background:#ecfdf3;border-color:#ccefd9;">
+        <div style="font-weight:900;font-size:18px;">✅ 訂單已完成</div>
+        <div style="margin-top:8px;">若已取餐完成，可直接關閉此畫面。</div>
+      </div>
+    `;
+    return;
+  }
+
+  div.innerHTML = "";
+}
+
+function updateLineNotifyUI(){
+  const badge = document.getElementById("lineNotifyBadge");
+  const hint = document.getElementById("lineNotifyHint");
+
+  if(customerLineUserId){
+    badge.style.display = "inline-block";
+    hint.innerText = "你已綁定 LINE，可取餐時系統會自動通知你。";
+  }else{
+    badge.style.display = "none";
+    hint.innerText = "目前未綁定 LINE 通知；若日後接上 LIFF，客人可收到可取餐 LINE 訊息。";
+  }
+}
+
+async function initLineIdentity(){
+  if(!USE_LIFF) {
+    updateLineNotifyUI();
+    return;
+  }
+
+  try{
+    if(typeof liff === "undefined"){
+      console.warn("LIFF SDK 尚未載入");
+      updateLineNotifyUI();
+      return;
+    }
+
+    await liff.init({ liffId: LIFF_ID });
+
+    if(!liff.isLoggedIn()){
+      liff.login();
+      return;
+    }
+
+    const profile = await liff.getProfile();
+    customerLineUserId = profile.userId || "";
+    updateLineNotifyUI();
+  }catch(err){
+    console.error("LIFF 初始化失敗：", err);
+    updateLineNotifyUI();
+  }
+}
+
+function resetToOrderPage(){
+  cart = {};
+  lastOrderId = "";
+  lastSeq = "";
+  currentStatus = "已成立";
+  document.getElementById("customerName").value = "";
+  document.getElementById("customerPhone").value = "";
+  document.getElementById("payMethod").value = "LINEPAY";
+  document.getElementById("submitBtn").disabled = false;
+  document.getElementById("submitBtn").innerText = "確認送出訂單";
+  generateTimeOptions();
+  toggleContactFields();
+  renderMenu();
+  updateCartUI();
+  hideCheckout(true);
+  clearLastOrder();
+  document.getElementById("successPickupAlert").innerHTML = "";
+  stopSuccessAutoRefresh();
+  showPage("orderPage");
+}
+
+function renderMenu(){
+  document.getElementById("menu").innerHTML = menuItems.map(m => `
+    <div class="menu-card">
+      <div class="menu-name">${m.n}</div>
+      <div class="menu-desc">${m.d}</div>
+      <div class="menu-price">$${m.p}</div>
+      <div class="menu-bottom">
+        <div class="qty-wrap">
+          <div class="add-tip">選擇數量</div>
+          <div class="qty-box">
+            <button class="btn-qty" onclick="editCart('${m.n}',-1)">−</button>
+            <div class="qty-num">${cart[m.n] || 0}</div>
+            <button class="btn-qty" onclick="editCart('${m.n}',1)">＋</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  `).join("");
+}
+
+function editCart(name, delta){
+  cart[name] = (cart[name] || 0) + delta;
+  if(cart[name] <= 0) delete cart[name];
+  renderMenu();
+  updateCartUI();
+}
+
+function getCartTotal(){
+  let total = 0;
+  for(const k in cart){
+    const item = menuItems.find(i => i.n === k);
+    if(item) total += item.p * cart[k];
+  }
+  return total;
+}
+function getCartCount(){
+  let count = 0;
+  for(const k in cart){
+    count += cart[k];
+  }
+  return count;
+}
+
+function renderCartSummary(){
+  const div = document.getElementById("cartSummary");
+  const keys = Object.keys(cart);
+
+  if(keys.length === 0){
+    div.innerHTML = `<div class="empty-box">目前尚未選擇餐點</div>`;
+    return;
+  }
+
+  div.innerHTML = keys.map(k => {
+    const item = menuItems.find(i => i.n === k);
+    const qty = cart[k];
+    const subtotal = item.p * qty;
+    return `
+      <div class="summary-row">
+        <div>
+          <div style="font-weight:900;">${k}</div>
+          <div class="small">$${item.p} × ${qty}</div>
+        </div>
+        <div style="font-weight:900;">$${subtotal}</div>
+      </div>
+    `;
+  }).join("");
+}
+
+function updateInlineSummary(){
+  const count = getCartCount();
+  const total = getCartTotal();
+  const sub = document.getElementById("inlineSummarySub");
+  const btn = document.getElementById("goCheckoutBtn");
+
+  document.getElementById("inlineSummaryTotal").innerText = total;
+
+  if(count === 0){
+    sub.innerText = "尚未選擇餐點";
+    btn.disabled = true;
+  }else{
+    sub.innerText = `已選 ${count} 項餐點，點擊下方按鈕即可確認訂單`;
+    btn.disabled = false;
+  }
+}
+
+function updateCartUI(){
+  const count = getCartCount();
+  const total = getCartTotal();
+
+  document.getElementById("cartCountTop").innerText = count;
+  document.getElementById("cartTotalTop").innerText = total;
+  document.getElementById("checkoutTotal").innerText = total;
+
+  renderCartSummary();
+  updateInlineSummary();
+}
+
+function generateTimeOptions(){
+  let opts = `<option value="現場取餐">現場取餐（盡快）</option>`;
+  for(let h=11; h<=19; h++){
+    const hh = String(h).padStart(2,"0");
+    opts += `<option value="${hh}:00">${hh}:00</option>`;
+    if(h !== 19) opts += `<option value="${hh}:30">${hh}:30</option>`;
+  }
+  document.getElementById("pickupTime").innerHTML = opts;
+}
+
+function toggleContactFields(){
+  const payMethod = document.getElementById("payMethod").value;
+  const hint = document.getElementById("contactHint");
+  hint.innerText = payMethod === "LINEPAY"
+    ? "LINE Pay 訂單必填；現場付款建議填寫方便對單"
+    : "現場付款可不填，但建議填寫方便對單";
+}
+
+function showCheckout(){
+  if(getCartCount() === 0){
+    alert("請先選擇餐點");
+    return;
+  }
+  updateCartUI();
+  document.getElementById("checkoutPanel").classList.add("show");
+  setTimeout(() => {
+    document.getElementById("checkoutPanel").scrollIntoView({ behavior:"smooth", block:"start" });
+  }, 50);
+}
+function hideCheckout(skipScroll = false){
+  document.getElementById("checkoutPanel").classList.remove("show");
+  if(!skipScroll){
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+}
+
+function renderSuccessBox(data = {}){
+  const seq = data.seq || lastSeq || "";
+  const orderId = data.orderId || lastOrderId || "";
+  const status = normalizeStatus(data.status || currentStatus || "已成立");
+
+  document.getElementById("successDetail").innerHTML = `
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap;">
+      <div>
+        <div><b>取餐號：</b>${seq}</div>
+        <div><b>訂單編號：</b>${orderId}</div>
+      </div>
+      <div>${renderStatusPill(status)}</div>
+    </div>
+
+    <div style="margin-top:12px;"><b>取餐提醒：</b></div>
+    <div>請記住你的取餐號碼，到店後可直接報號取餐。</div>
+    <div>本頁會每 20 秒自動刷新一次訂單狀態。</div>
+    <div>${customerLineUserId ? "你已綁定 LINE，若店家改為可取餐，系統也會推送 LINE 通知。" : "目前此裝置未綁定 LINE 推播，仍可用本頁或查詢訂單查看狀態。"}</div>
+  `;
+
+  renderPickupAlert(status, seq);
+}
+
+async function fetchOrderStatusById(id){
+  const url = new URL(GAS_API);
+  url.searchParams.append("action", "checkMyOrder");
+  url.searchParams.append("id", id);
+  url.searchParams.append("t", Date.now());
+
+  const response = await fetch(url);
+  return await response.json();
+}
+
+async function refreshSuccessStatus(showChangedToast = false){
+  const last = getLastOrder();
+  if(!last || !last.lookupId) return;
+
+  try{
+    const res = await fetchOrderStatusById(last.lookupId);
+    if(!res) return;
+
+    const newStatus = normalizeStatus(res.status || currentStatus || "已成立");
+    const oldStatus = normalizeStatus(currentStatus || "已成立");
+
+    currentStatus = newStatus;
+    lastSeq = res.seqId || last.seq || lastSeq || "";
+
+    renderSuccessBox({
+      seq: lastSeq,
+      orderId: last.orderId || lastOrderId || "",
+      status: newStatus
+    });
+
+    saveLastOrder({
+      orderId: last.orderId || lastOrderId || "",
+      seq: lastSeq,
+      lookupId: last.lookupId,
+      status: newStatus
+    });
+
+    if(showChangedToast && newStatus !== oldStatus){
+      showToast(`訂單狀態已更新：${newStatus}`);
+    }
+  }catch(err){
+    console.error("refreshSuccessStatus error:", err);
+  }
+}
+
+function startSuccessAutoRefresh(){
+  stopSuccessAutoRefresh();
+  refreshSuccessStatus(false);
+  successRefreshTimer = setInterval(() => {
+    refreshSuccessStatus(true);
+  }, AUTO_REFRESH_MS);
+}
+
+function stopSuccessAutoRefresh(){
+  if(successRefreshTimer){
+    clearInterval(successRefreshTimer);
+    successRefreshTimer = null;
+  }
+}
+
+function startQueryAutoRefresh(){
+  stopQueryAutoRefresh();
+  queryRefreshTimer = setInterval(() => {
+    const modalOpen = document.getElementById("queryModal").classList.contains("show");
+    const id = document.getElementById("queryInput").value.trim();
+    if(modalOpen && id){
+      queryOrder(true, true);
+    }
+  }, AUTO_REFRESH_MS);
+}
+
+function stopQueryAutoRefresh(){
+  if(queryRefreshTimer){
+    clearInterval(queryRefreshTimer);
+    queryRefreshTimer = null;
+  }
+}
+
+async function submitOrder(){
+  if(Object.keys(cart).length === 0){
+    alert("請至少選擇一項餐點");
+    return;
+  }
+
+  const payMethod = document.getElementById("payMethod").value;
+  const customerName = document.getElementById("customerName").value.trim();
+  const customerPhone = document.getElementById("customerPhone").value.trim();
+
+  if(payMethod === "LINEPAY" && (!customerName || !customerPhone)){
+    alert("LINE Pay 訂單請填寫姓名與電話");
+    return;
+  }
+
+  const btn = document.getElementById("submitBtn");
+  btn.disabled = true;
+  btn.innerText = "訂單送出中...";
+
+  const orderData = {
+    items: Object.keys(cart).map(k => `${k}x${cart[k]}`).join(","),
+    total: getCartTotal(),
+    pickupTime: document.getElementById("pickupTime").value,
+    payMethod,
+    customerName,
+    customerPhone,
+    customerLineUserId
+  };
+
+  try{
+    const url = new URL(GAS_API);
+    url.searchParams.append("action", "submitOrder");
+    url.searchParams.append("orderData", JSON.stringify(orderData));
+    url.searchParams.append("frontendUrl", window.location.origin + window.location.pathname);
+    url.searchParams.append("t", Date.now());
+
+    const response = await fetch(url);
+    const res = await response.json();
+
+    if(res.payUrl){
+      window.location.href = res.payUrl;
+      return;
+    }
+
+    if(res.status === "success"){
+      lastOrderId = res.orderId || "";
+      lastSeq = res.seq || "";
+      currentStatus = "已成立";
+
+      saveLastOrder({
+        orderId: lastOrderId,
+        seq: lastSeq,
+        lookupId: lastOrderId || lastSeq,
+        status: currentStatus
+      });
+
+      renderSuccessBox({
+        seq: lastSeq,
+        orderId: lastOrderId,
+        status: currentStatus
+      });
+
+      showPage("successPage");
+      refreshSuccessStatus(false);
+      return;
+    }
+
+    alert("下單失敗：" + JSON.stringify(res));
+  }catch(err){
+    alert("送單失敗：" + err.message);
+  }
+
+  btn.disabled = false;
+  btn.innerText = "確認送出訂單";
+}
+
+function openQueryModal(){
+  document.getElementById("queryModal").classList.add("show");
+  startQueryAutoRefresh();
+}
+function closeQueryModal(){
+  document.getElementById("queryModal").classList.remove("show");
+  stopQueryAutoRefresh();
+}
+
+function goQueryOrder(){
+  showPage("orderPage");
+  openQueryModal();
+  const last = getLastOrder();
+  document.getElementById("queryInput").value =
+    (last && (last.lookupId || last.orderId || last.seq)) || lastOrderId || lastSeq || "";
+  queryOrder();
+}
+
+async function queryOrder(autoMode = false, silent = false){
+  const id = document.getElementById("queryInput").value.trim();
+  const resultDiv = document.getElementById("queryResult");
+
+  if(!id){
+    if(!autoMode) alert("請輸入訂單ID或取餐號");
+    return;
+  }
+
+  if(!silent){
+    resultDiv.innerHTML = "<div class='notice' style='margin-top:14px;'>查詢中...</div>";
+  }
+
+  try{
+    const res = await fetchOrderStatusById(id);
+
+    if(!res){
+      resultDiv.innerHTML = "<div class='notice' style='margin-top:14px;'>查無此訂單</div>";
+      return;
+    }
+
+    const seq = res.seqId || "";
+    const status = normalizeStatus(res.status || "");
+    const pickupBox = status === "可取餐"
+      ? `
+        <div class="pickup-alert" style="margin-top:14px;">
+          <div style="font-weight:900;font-size:18px;">🔔 餐點已可取餐</div>
+          <div style="margin-top:8px;">請到店後告知取餐號碼：<b>${seq || "-"}</b></div>
+        </div>
+      `
+      : status === "製作中"
+      ? `
+        <div class="pickup-alert" style="margin-top:14px;background:#eef6ff;border-color:#d6e8ff;">
+          <div style="font-weight:900;font-size:18px;">👨‍🍳 餐點製作中</div>
+          <div style="margin-top:8px;">系統會持續自動更新目前狀態。</div>
+        </div>
+      `
+      : status === "已完成"
+      ? `
+        <div class="pickup-alert" style="margin-top:14px;background:#ecfdf3;border-color:#ccefd9;">
+          <div style="font-weight:900;font-size:18px;">✅ 訂單已完成</div>
+          <div style="margin-top:8px;">此筆訂單已完成處理。</div>
+        </div>
+      `
+      : "";
+
+    resultDiv.innerHTML = `
+      <div class="result-card">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap;">
+          <div><b>取餐號：</b>${seq}</div>
+          <div>${renderStatusPill(status)}</div>
+        </div>
+        <div style="margin-top:10px;"><b>餐點內容：</b><br>${String(res.items || "").replaceAll(",", "<br>")}</div>
+        <div><b>取餐時間：</b>${res.pickup || ""}</div>
+        <div><b>姓名：</b>${res.customerName || "未填"}</div>
+        <div><b>電話：</b>${res.customerPhone || "未填"}</div>
+      </div>
+      ${pickupBox}
+    `;
+
+    const old = getLastOrder() || {};
+    const oldStatus = normalizeStatus(old.status || "");
+    saveLastOrder({
+      orderId: old.orderId || lastOrderId || "",
+      seq: seq || old.seq || "",
+      lookupId: id,
+      status: status || old.status || ""
+    });
+
+    if(silent && oldStatus && status !== oldStatus){
+      showToast(`查詢狀態已更新：${status}`);
+    }
+  }catch(err){
+    resultDiv.innerHTML = `<div class="notice" style="margin-top:14px;">查詢失敗：${err.message}</div>`;
+  }
+}
+
+function showSuccessIfNeeded(){
+  const params = new URLSearchParams(window.location.search);
+  if(params.get("status") === "success"){
+    lastOrderId = params.get("orderId") || "";
+    lastSeq = params.get("seq") || "";
+    currentStatus = "已成立";
+
+    saveLastOrder({
+      orderId: lastOrderId,
+      seq: lastSeq,
+      lookupId: lastOrderId || lastSeq,
+      status: currentStatus
+    });
+
+    renderSuccessBox({
+      seq: lastSeq,
+      orderId: lastOrderId,
+      status: currentStatus
+    });
+
+    showPage("successPage");
+    refreshSuccessStatus(false);
+  }
+}
+
+function restoreOrderQueryIfNeeded(){
+  const params = new URLSearchParams(window.location.search);
+  if(params.get("status") === "success") return;
+
+  const last = getLastOrder();
+  if(last && (last.lookupId || last.orderId || last.seq)){
+    showPage("orderPage");
+    openQueryModal();
+    document.getElementById("queryInput").value = last.lookupId || last.orderId || last.seq;
+    queryOrder(true);
+    showToast("已幫你帶回上一筆訂單查詢");
+  }
+}
+
+window.addEventListener("beforeunload", function(e){
+  const successActive = document.getElementById("successPage").classList.contains("active");
+  const last = getLastOrder();
+
+  if(successActive && last && (last.seq || last.orderId)){
+    e.preventDefault();
+    e.returnValue = "";
+  }
+});
+
+renderMenu();
+generateTimeOptions();
+toggleContactFields();
+updateCartUI();
+updateLineNotifyUI();
+showSuccessIfNeeded();
+restoreOrderQueryIfNeeded();
+initLineIdentity();
+</script>
+
+<!-- 要啟用 LIFF 才需要取消註解 -->
+<!-- <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script> -->
+
+</body>
+</html>
