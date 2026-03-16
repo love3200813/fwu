@@ -969,7 +969,7 @@ async function printCanvasToPrinter(canvas, finalHeight){
   const header = new TextEncoder().encode(
     `SIZE 48 mm, ${mmHeight} mm\r\nGAP 2 mm, 0 mm\r\nCLS\r\nBITMAP 0,0,48,${height},0,`
   );
-  const footer = new TextEncoder().encode(`\r\nPRINT 1,1\r\nFEED 35 mm\r\n`);
+  const footer = new TextEncoder().encode(`\r\nPRINT 1,1\r\nFEED 45 mm\r\n`);
 
   const buf = new Uint8Array(header.length + bitmap.length + footer.length);
   buf.set(header, 0);
