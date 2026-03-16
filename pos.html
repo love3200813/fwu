@@ -342,9 +342,10 @@ body{
     <div id="usbStatus" class="usb-status">尚未連線</div>
 
     <div class="shift-box" id="shiftBox">
-      <div class="shift-title">班次狀態</div>
-      <div id="shiftStatus" class="shift-inactive">目前尚未開班</div>
-    </div>
+  <div class="shift-title">班次狀態</div>
+  <div id="shiftStatus" class="shift-inactive">目前尚未開班</div>
+  <div id="shiftSummaryMini" style="margin-top:10px;color:#ccc;font-size:13px;line-height:1.7;"></div>
+</div>
 
     <div id="msg" class="msg"></div>
   </div>
@@ -517,14 +518,15 @@ async function fetchCurrentShift(){
     const res = await fetch(GAS_API + "?action=getCurrentShift&t=" + Date.now());
     const data = await res.json();
     currentShift = data;
-    renderShiftStatus(data);
+    await renderShiftStatus(data);
   }catch(err){
     setMsg("抓班次失敗：" + err.message);
   }
 }
 
-function renderShiftStatus(data){
+async function renderShiftStatus(data){
   const div = document.getElementById("shiftStatus");
+  const mini = document.getElementById("shiftSummaryMini");
 
   if(data && data.active){
     div.className = "shift-active";
@@ -533,9 +535,26 @@ function renderShiftStatus(data){
       `班次：${data.shiftName || ""}<br>` +
       `人員：${data.operator || ""}<br>` +
       `開始：${data.startAt || ""}`;
+
+    try{
+      const summary = await getShiftSummary();
+      if(summary && summary.active){
+        mini.innerHTML =
+          `本班訂單：${summary.totalOrders || 0}<br>` +
+          `已完成：${summary.completedCount || 0}｜未完成：${(summary.unfinishedOrders || []).length}<br>` +
+          `現金：$${summary.cashTotal || 0}<br>` +
+          `LINEPAY：$${summary.linepayTotal || 0}<br>` +
+          `總營業額：$${summary.grandTotal || 0}`;
+      }else{
+        mini.innerHTML = "";
+      }
+    }catch(err){
+      mini.innerHTML = "";
+    }
   }else{
     div.className = "shift-inactive";
     div.innerHTML = "目前尚未開班";
+    mini.innerHTML = "";
   }
 }
 
@@ -567,6 +586,8 @@ async function handleStartShift(){
     }
 
     await fetchCurrentShift();
+    await fetchOrders();
+
     setMsg(`已開班：${data.shiftName}`);
     playBeep();
     alert(`開班成功\n班次：${data.shiftName}`);
@@ -606,11 +627,15 @@ async function handleCloseShift(){
       return;
     }
 
+    const unfinishedCount = (summary.unfinishedOrders || []).length;
+
     const ok = confirm(
       `確認交班？\n\n` +
       `班次：${summary.shiftName}\n` +
       `開班人員：${summary.operator}\n` +
       `本班訂單數：${summary.totalOrders}\n` +
+      `已完成：${summary.completedCount}\n` +
+      `未完成：${unfinishedCount}\n` +
       `現金：$${summary.cashTotal}\n` +
       `LINEPAY：$${summary.linepayTotal}\n` +
       `總營業額：$${summary.grandTotal}`
@@ -627,6 +652,12 @@ async function handleCloseShift(){
       alert(result.message || "交班失敗");
       return;
     }
+
+    // 交班完成後清空前端狀態
+    printedOrders = new Set();
+    cashCart = {};
+    renderCashMenu();
+    updateCashSummary();
 
     await fetchCurrentShift();
     await fetchOrders();
@@ -1114,8 +1145,11 @@ function mergeReceiptCanvases(topReceipt, bottomReceipt){
 
 function buildShiftReceiptCanvas(data){
   const s = data.summary || {};
+  const unfinished = Array.isArray(s.unfinishedOrders) ? s.unfinishedOrders : [];
+
   const width = 384;
-  const lineHeight = 40;
+  const lineHeight = 36;
+
   const rows = [
     `班次：${s.shiftName || ""}`,
     `班次ID：${s.shiftId || ""}`,
@@ -1137,13 +1171,39 @@ function buildShiftReceiptCanvas(data){
     `其他付款：$${s.otherPayTotal || 0}`,
     "--------------------------",
     `總營業額：$${s.grandTotal || 0}`,
-    "",
-    "本班結束，辛苦了"
+    "==========================",
+    `未完成訂單數：${unfinished.length}`
   ];
+
+  const detailRows = [];
+
+  unfinished.forEach((o, idx) => {
+    detailRows.push("--------------------------");
+    detailRows.push(`${idx + 1}. ${o.seq || ""} / ${o.status || ""}`);
+    detailRows.push(`付款:${o.pay || ""} 金額:$${o.total || 0}`);
+    detailRows.push(`取餐:${o.pickup || ""}`);
+
+    if(o.customerName){
+      detailRows.push(`姓名:${o.customerName}`);
+    }
+    if(o.customerPhone){
+      detailRows.push(`電話:${o.customerPhone}`);
+    }
+
+    const items = String(o.content || "").split(",");
+    items.forEach(item => {
+      detailRows.push(`- ${item.trim()}`);
+    });
+  });
+
+  const allRows = rows.concat(
+    unfinished.length ? detailRows : ["無未完成訂單"],
+    ["", "本班結束，辛苦了"]
+  );
 
   const canvas = document.createElement("canvas");
   const ctx = canvas.getContext("2d");
-  const estimatedHeight = 180 + rows.length * lineHeight + 80;
+  const estimatedHeight = 180 + allRows.length * lineHeight + 100;
 
   canvas.width = width;
   canvas.height = estimatedHeight;
@@ -1162,7 +1222,7 @@ function buildShiftReceiptCanvas(data){
   ctx.fillText("飯丸屋 POS", 10, y); y += 62;
 
   ctx.font = "26px monospace";
-  for(const row of rows){
+  for(const row of allRows){
     ctx.fillText(row, 10, y);
     y += lineHeight;
   }
