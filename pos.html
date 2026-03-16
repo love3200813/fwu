@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>飯丸屋 POS v6</title>
+<title>飯丸屋 POS v35</title>
 <style>
 body{
   margin:0;
@@ -39,6 +39,7 @@ body{
 }
 .btn-usb{background:#f1f1f1;color:#111;}
 .btn-info{background:#3498db;color:#fff;}
+.btn-order{background:#f39c12;color:#111;}
 .usb-status,.msg{
   font-size:14px;
   line-height:1.6;
@@ -46,6 +47,145 @@ body{
 }
 .usb-status{color:#7CFC98;}
 .msg{color:#ffd166;}
+
+.cash-panel{
+  display:none;
+  margin-bottom:20px;
+  background:#1f1f1f;
+  border-radius:16px;
+  padding:18px;
+  border:1px solid #333;
+}
+.cash-panel.show{
+  display:block;
+}
+.cash-title{
+  font-size:24px;
+  font-weight:900;
+  margin-bottom:8px;
+}
+.cash-sub{
+  color:#bbb;
+  margin-bottom:16px;
+  font-size:14px;
+}
+.cash-grid{
+  display:grid;
+  grid-template-columns:repeat(auto-fit,minmax(220px,1fr));
+  gap:12px;
+}
+.cash-item{
+  background:#2b2b2b;
+  border-radius:14px;
+  padding:14px;
+  border:1px solid #3a3a3a;
+}
+.cash-name{
+  font-size:18px;
+  font-weight:900;
+}
+.cash-desc{
+  color:#bbb;
+  font-size:13px;
+  line-height:1.6;
+  margin-top:6px;
+  min-height:40px;
+}
+.cash-price{
+  margin-top:12px;
+  font-size:24px;
+  font-weight:900;
+  color:#ffd166;
+}
+.cash-qty-wrap{
+  margin-top:14px;
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  gap:10px;
+}
+.cash-qty-box{
+  display:flex;
+  align-items:center;
+  gap:10px;
+}
+.qty-btn{
+  width:38px;
+  height:38px;
+  border:none;
+  border-radius:10px;
+  background:#444;
+  color:#fff;
+  font-size:22px;
+  font-weight:900;
+  cursor:pointer;
+}
+.qty-num{
+  min-width:26px;
+  text-align:center;
+  font-size:18px;
+  font-weight:900;
+}
+.cash-summary{
+  margin-top:18px;
+  background:#2b2b2b;
+  border-radius:14px;
+  padding:16px;
+}
+.cash-summary-top{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  flex-wrap:wrap;
+  gap:10px;
+}
+.cash-summary-title{
+  font-size:20px;
+  font-weight:900;
+}
+.cash-summary-sub{
+  color:#bbb;
+  font-size:14px;
+  margin-top:4px;
+}
+.cash-total{
+  font-size:28px;
+  font-weight:900;
+  color:#2ecc71;
+}
+.cash-list{
+  margin-top:14px;
+  color:#ddd;
+  line-height:1.8;
+  white-space:pre-line;
+}
+.cash-actions{
+  margin-top:16px;
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:12px;
+}
+.subbtn{
+  border:none;
+  border-radius:12px;
+  padding:14px;
+  font-size:16px;
+  font-weight:900;
+  cursor:pointer;
+}
+.subbtn-clear{
+  background:#444;
+  color:#fff;
+}
+.subbtn-send{
+  background:#2ecc71;
+  color:#111;
+}
+.subbtn:disabled{
+  opacity:.45;
+  cursor:not-allowed;
+}
+
 .grid{
   display:grid;
   grid-template-columns:repeat(auto-fit,minmax(320px,1fr));
@@ -116,10 +256,12 @@ body{
   color:#aaa;
   padding:20px;
 }
+
 @media (max-width:768px){
   .wrap{display:block;}
   .sidebar{width:100%;}
   .main{padding:15px;}
+  .cash-actions{grid-template-columns:1fr;}
 }
 </style>
 </head>
@@ -131,12 +273,37 @@ body{
 
     <button class="btn btn-usb" onclick="connectUSB()">🔌 建立 USB 連線</button>
     <button class="btn btn-info" onclick="fetchOrders()">🔄 重新整理訂單</button>
+    <button class="btn btn-order" onclick="toggleCashPanel()">🛒 現場代客下單</button>
 
     <div id="usbStatus" class="usb-status">尚未連線</div>
     <div id="msg" class="msg"></div>
   </div>
 
   <div class="main">
+    <div id="cashPanel" class="cash-panel">
+      <div class="cash-title">現場代客下單</div>
+      <div class="cash-sub">固定為現場取餐、現金付款。送出後會直接進待列印。</div>
+
+      <div id="cashMenu" class="cash-grid"></div>
+
+      <div class="cash-summary">
+        <div class="cash-summary-top">
+          <div>
+            <div class="cash-summary-title">目前代客餐點</div>
+            <div class="cash-summary-sub" id="cashSummarySub">尚未選擇餐點</div>
+          </div>
+          <div class="cash-total">$<span id="cashTotal">0</span></div>
+        </div>
+
+        <div id="cashList" class="cash-list"></div>
+
+        <div class="cash-actions">
+          <button class="subbtn subbtn-clear" onclick="clearCashCart()">清空</button>
+          <button id="cashSubmitBtn" class="subbtn subbtn-send" onclick="submitCashOrder()" disabled>送出現場訂單</button>
+        </div>
+      </div>
+    </div>
+
     <h2>即時訂單</h2>
     <div id="orders" class="grid"></div>
   </div>
@@ -145,9 +312,21 @@ body{
 <script>
 const GAS_API = "https://script.google.com/macros/s/AKfycbz0HQ7EsRj1kFhP-UT9DIn90WgXt7q-H8vkEh3fD79_4BuCm5HnCFGF9q3h1mf6pY4s/exec";
 
+const cashMenuItems = [
+  { n:"招牌午餐肉", p:65, d:"經典熱銷，鹹香順口" },
+  { n:"炸蝦塔塔", p:95, d:"炸蝦搭配塔塔醬，口感豐富" },
+  { n:"咖哩可樂餅", p:85, d:"外酥內綿，濃郁咖哩香" },
+  { n:"日式炸雞", p:90, d:"人氣炸雞，多汁帶脆" },
+  { n:"經典雙拼", p:120, d:"一次滿足雙重口味" },
+  { n:"沖繩豆乳", p:45, d:"清爽順口，解膩首選" },
+  { n:"花生醬厚牛", p:110, d:"濃厚系必點款" },
+  { n:"宇治抹茶", p:55, d:"微苦回甘，搭餐剛好" }
+];
+
 let printerDevice = null;
 let endpointOut = null;
 let printedOrders = new Set();
+let cashCart = {};
 
 function setMsg(text){
   document.getElementById("msg").innerText = text || "";
@@ -162,7 +341,6 @@ function formatPickupDisplay(value){
     return "現場取餐";
   }
 
-  // 純時間格式，例如 11:30 / 4:30 / 11:30:00
   const timeMatch = str.match(/^(\d{1,2}):(\d{2})(?::(\d{2}))?$/);
   if(timeMatch){
     const now = new Date();
@@ -180,7 +358,6 @@ function formatPickupDisplay(value){
     return `${yyyy}/${mm}/${dd} ${ap} ${String(hh).padStart(2, "0")}:${mi}`;
   }
 
-  // 完整日期時間格式
   const d = new Date(str);
   if(!isNaN(d)){
     const yyyy = d.getFullYear();
@@ -198,6 +375,130 @@ function formatPickupDisplay(value){
   }
 
   return str;
+}
+
+function toggleCashPanel(){
+  document.getElementById("cashPanel").classList.toggle("show");
+}
+
+function renderCashMenu(){
+  const div = document.getElementById("cashMenu");
+  div.innerHTML = cashMenuItems.map(item => `
+    <div class="cash-item">
+      <div class="cash-name">${item.n}</div>
+      <div class="cash-desc">${item.d}</div>
+      <div class="cash-price">$${item.p}</div>
+      <div class="cash-qty-wrap">
+        <div>數量</div>
+        <div class="cash-qty-box">
+          <button class="qty-btn" onclick="editCashCart('${item.n}', -1)">−</button>
+          <div class="qty-num">${cashCart[item.n] || 0}</div>
+          <button class="qty-btn" onclick="editCashCart('${item.n}', 1)">＋</button>
+        </div>
+      </div>
+    </div>
+  `).join("");
+}
+
+function editCashCart(name, delta){
+  cashCart[name] = (cashCart[name] || 0) + delta;
+  if(cashCart[name] <= 0) delete cashCart[name];
+  renderCashMenu();
+  updateCashSummary();
+}
+
+function getCashTotal(){
+  let total = 0;
+  for(const k in cashCart){
+    const item = cashMenuItems.find(x => x.n === k);
+    if(item) total += item.p * cashCart[k];
+  }
+  return total;
+}
+
+function getCashCount(){
+  let count = 0;
+  for(const k in cashCart){
+    count += cashCart[k];
+  }
+  return count;
+}
+
+function updateCashSummary(){
+  const total = getCashTotal();
+  const count = getCashCount();
+  const listDiv = document.getElementById("cashList");
+  const subDiv = document.getElementById("cashSummarySub");
+  const submitBtn = document.getElementById("cashSubmitBtn");
+
+  document.getElementById("cashTotal").innerText = total;
+
+  if(count === 0){
+    subDiv.innerText = "尚未選擇餐點";
+    listDiv.innerText = "";
+    submitBtn.disabled = true;
+    return;
+  }
+
+  subDiv.innerText = `已選 ${count} 項，固定為現場取餐 / 現金付款`;
+  listDiv.innerText = Object.keys(cashCart)
+    .map(name => `${name} x ${cashCart[name]}`)
+    .join("\n");
+
+  submitBtn.disabled = false;
+}
+
+function clearCashCart(){
+  cashCart = {};
+  renderCashMenu();
+  updateCashSummary();
+}
+
+async function submitCashOrder(){
+  if(Object.keys(cashCart).length === 0){
+    alert("請先選擇餐點");
+    return;
+  }
+
+  const btn = document.getElementById("cashSubmitBtn");
+  btn.disabled = true;
+  btn.innerText = "送單中...";
+
+  const orderData = {
+    items: Object.keys(cashCart).map(k => `${k}x${cashCart[k]}`).join(","),
+    total: getCashTotal(),
+    pickupTime: "現場取餐",
+    payMethod: "現金",
+    customerName: "",
+    customerPhone: "",
+    customerLineUserId: ""
+  };
+
+  try{
+    const url = new URL(GAS_API);
+    url.searchParams.append("action", "submitOrder");
+    url.searchParams.append("orderData", JSON.stringify(orderData));
+    url.searchParams.append("frontendUrl", window.location.origin + window.location.pathname);
+    url.searchParams.append("t", Date.now());
+
+    const response = await fetch(url);
+    const res = await response.json();
+
+    if(res && res.status === "success"){
+      setMsg(`現場訂單 ${res.seq || ""} 已建立`);
+      clearCashCart();
+      await fetchOrders();
+      return;
+    }
+
+    alert("送單失敗：" + JSON.stringify(res));
+  }catch(err){
+    console.error("submitCashOrder 失敗：", err);
+    alert("送單失敗：" + err.message);
+  }finally{
+    btn.disabled = false;
+    btn.innerText = "送出現場訂單";
+  }
 }
 
 async function connectUSB(){
@@ -294,7 +595,7 @@ async function autoPrint(list){
         setMsg(`正在列印 ${o.seq}...`);
         await printOrderLabel(o);
         printedOrders.add(o.id);
-        await updateStatus(o.row, "製作中");
+        await doUpdateStatus(o.row, "製作中");
         setMsg(`${o.seq} 已送出列印`);
       }catch(err){
         console.error("列印失敗：", err);
@@ -321,15 +622,7 @@ async function manualPrint(encoded){
 
 async function setStatus(row, status){
   try{
-    const res = await fetch(
-      GAS_API +
-      "?action=updateStatus" +
-      "&row=" + encodeURIComponent(row) +
-      "&status=" + encodeURIComponent(status) +
-      "&t=" + Date.now()
-    );
-
-    const data = await res.json();
+    const data = await doUpdateStatus(row, status);
 
     if(data && data.success === false){
       alert(data.message || "此筆訂單目前不可操作");
@@ -343,8 +636,15 @@ async function setStatus(row, status){
   }
 }
 
-async function updateStatus(row, status){
-  return setStatus(row, status);
+async function doUpdateStatus(row, status){
+  const res = await fetch(
+    GAS_API +
+    "?action=updateStatus" +
+    "&row=" + encodeURIComponent(row) +
+    "&status=" + encodeURIComponent(status) +
+    "&t=" + Date.now()
+  );
+  return await res.json();
 }
 
 async function printOrderLabel(o){
@@ -438,6 +738,8 @@ async function printCanvasToPrinter(canvas, finalHeight){
   await printerDevice.transferOut(endpointOut, buf);
 }
 
+renderCashMenu();
+updateCashSummary();
 setInterval(fetchOrders, 3000);
 fetchOrders();
 </script>
