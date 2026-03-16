@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>飯丸屋 POS v8</title>
+<title>飯丸屋 POS v9 班次制</title>
 <style>
 body{
   margin:0;
@@ -13,7 +13,7 @@ body{
 }
 .wrap{display:flex;min-height:100vh;}
 .sidebar{
-  width:280px;
+  width:300px;
   background:#1b1b1b;
   padding:20px;
   box-sizing:border-box;
@@ -40,13 +40,35 @@ body{
 .btn-usb{background:#f1f1f1;color:#111;}
 .btn-info{background:#3498db;color:#fff;}
 .btn-order{background:#f39c12;color:#111;}
-.usb-status,.msg{
+.btn-start{background:#2ecc71;color:#111;}
+.btn-shift{background:#e74c3c;color:#fff;}
+
+.usb-status,.msg,.shift-box{
   font-size:14px;
   line-height:1.6;
   margin-top:10px;
 }
 .usb-status{color:#7CFC98;}
 .msg{color:#ffd166;}
+
+.shift-box{
+  margin-top:14px;
+  background:#242424;
+  border:1px solid #333;
+  border-radius:14px;
+  padding:12px;
+}
+.shift-title{
+  font-size:15px;
+  font-weight:900;
+  margin-bottom:8px;
+}
+.shift-active{
+  color:#7CFC98;
+}
+.shift-inactive{
+  color:#ff8c8c;
+}
 
 .cash-panel{
   display:none;
@@ -296,6 +318,7 @@ body{
   color:#aaa;
   padding:20px;
 }
+
 @media (max-width:768px){
   .wrap{display:block;}
   .sidebar{width:100%;}
@@ -313,15 +336,23 @@ body{
     <button class="btn btn-usb" onclick="connectUSB()">🔌 建立 USB 連線</button>
     <button class="btn btn-info" onclick="fetchOrders()">🔄 重新整理訂單</button>
     <button class="btn btn-order" onclick="toggleCashPanel()">🛒 現場代客下單</button>
+    <button class="btn btn-start" onclick="handleStartShift()">🟢 開班</button>
+    <button class="btn btn-shift" onclick="handleCloseShift()">🧾 結單 / 交班</button>
 
     <div id="usbStatus" class="usb-status">尚未連線</div>
+
+    <div class="shift-box" id="shiftBox">
+      <div class="shift-title">班次狀態</div>
+      <div id="shiftStatus" class="shift-inactive">目前尚未開班</div>
+    </div>
+
     <div id="msg" class="msg"></div>
   </div>
 
   <div class="main">
     <div id="cashPanel" class="cash-panel">
       <div class="cash-title">現場代客下單</div>
-      <div class="cash-sub">固定為現場取餐、現金付款。送出後會直接進待列印。</div>
+      <div class="cash-sub">固定為現場取餐、現金付款。送出後會直接進待列印，並綁定目前班次。</div>
 
       <div id="cashMenu" class="cash-grid"></div>
 
@@ -366,6 +397,7 @@ let printerDevice = null;
 let endpointOut = null;
 let printedOrders = new Set();
 let cashCart = {};
+let currentShift = null;
 
 function setMsg(text){
   document.getElementById("msg").innerText = text || "";
@@ -476,6 +508,141 @@ function toggleCashPanel(){
   document.getElementById("cashPanel").classList.toggle("show");
 }
 
+/* =========================
+   班次功能
+   ========================= */
+
+async function fetchCurrentShift(){
+  try{
+    const res = await fetch(GAS_API + "?action=getCurrentShift&t=" + Date.now());
+    const data = await res.json();
+    currentShift = data;
+    renderShiftStatus(data);
+  }catch(err){
+    setMsg("抓班次失敗：" + err.message);
+  }
+}
+
+function renderShiftStatus(data){
+  const div = document.getElementById("shiftStatus");
+
+  if(data && data.active){
+    div.className = "shift-active";
+    div.innerHTML =
+      `已開班<br>` +
+      `班次：${data.shiftName || ""}<br>` +
+      `人員：${data.operator || ""}<br>` +
+      `開始：${data.startAt || ""}`;
+  }else{
+    div.className = "shift-inactive";
+    div.innerHTML = "目前尚未開班";
+  }
+}
+
+async function handleStartShift(){
+  try{
+    if(currentShift && currentShift.active){
+      alert("目前已有進行中的班次，請先交班");
+      return;
+    }
+
+    const operator = prompt("請輸入開班人員姓名", "店員");
+    if(operator === null) return;
+
+    const shiftName = prompt("請輸入班次名稱", "早班");
+    if(shiftName === null) return;
+
+    const res = await fetch(
+      GAS_API +
+      "?action=startShift" +
+      "&operator=" + encodeURIComponent(operator) +
+      "&shiftName=" + encodeURIComponent(shiftName) +
+      "&t=" + Date.now()
+    );
+    const data = await res.json();
+
+    if(!data || data.success === false){
+      alert(data.message || "開班失敗");
+      return;
+    }
+
+    await fetchCurrentShift();
+    setMsg(`已開班：${data.shiftName}`);
+    playBeep();
+    alert(`開班成功\n班次：${data.shiftName}`);
+  }catch(err){
+    alert("開班失敗：" + err.message);
+  }
+}
+
+async function getShiftSummary(){
+  const res = await fetch(GAS_API + "?action=getShiftSummary&t=" + Date.now());
+  return await res.json();
+}
+
+async function closeShiftToServer(operator){
+  const res = await fetch(
+    GAS_API +
+    "?action=closeShift" +
+    "&operator=" + encodeURIComponent(operator) +
+    "&t=" + Date.now()
+  );
+  return await res.json();
+}
+
+async function handleCloseShift(){
+  try{
+    if(!currentShift || !currentShift.active){
+      alert("目前沒有進行中的班次");
+      return;
+    }
+
+    const closeOperator = prompt("請輸入交班人員姓名", currentShift.operator || "店員");
+    if(closeOperator === null) return;
+
+    const summary = await getShiftSummary();
+    if(!summary || summary.success === false || !summary.active){
+      alert("無法取得本班資料");
+      return;
+    }
+
+    const ok = confirm(
+      `確認交班？\n\n` +
+      `班次：${summary.shiftName}\n` +
+      `開班人員：${summary.operator}\n` +
+      `本班訂單數：${summary.totalOrders}\n` +
+      `現金：$${summary.cashTotal}\n` +
+      `LINEPAY：$${summary.linepayTotal}\n` +
+      `總營業額：$${summary.grandTotal}`
+    );
+    if(!ok) return;
+
+    await printShiftReceipt({
+      closeOperator,
+      summary
+    });
+
+    const result = await closeShiftToServer(closeOperator);
+    if(!result || result.success === false){
+      alert(result.message || "交班失敗");
+      return;
+    }
+
+    await fetchCurrentShift();
+    await fetchOrders();
+
+    setMsg(`交班完成：${summary.shiftName} / 總營業額 $${summary.grandTotal}`);
+    playBeep();
+    alert("交班完成，已列印交班單並寫入交班紀錄");
+  }catch(err){
+    alert("交班失敗：" + err.message);
+  }
+}
+
+/* =========================
+   現場代客下單
+   ========================= */
+
 function renderCashMenu(){
   const div = document.getElementById("cashMenu");
   div.innerHTML = cashMenuItems.map(item => `
@@ -580,10 +747,11 @@ async function submitCashOrder(){
     const res = await response.json();
 
     if(res && res.status === "success"){
-      setMsg(`現場訂單 ${res.seq || ""} 已建立，等待自動列印`);
+      setMsg(`現場訂單 ${res.seq || ""} 已建立，班次：${res.shiftName || "未指定"}`);
       playBeep();
       clearCashCart();
       await fetchOrders();
+      await fetchCurrentShift();
       return;
     }
 
@@ -595,6 +763,10 @@ async function submitCashOrder(){
     btn.innerText = "送出現場訂單";
   }
 }
+
+/* =========================
+   USB
+   ========================= */
 
 async function connectUSB(){
   try{
@@ -632,6 +804,10 @@ async function connectUSB(){
     setMsg("USB 連線失敗");
   }
 }
+
+/* =========================
+   訂單
+   ========================= */
 
 async function fetchOrders(){
   try{
@@ -680,6 +856,7 @@ function renderOrders(list){
           <div class="seq">${o.seq || ""}</div>
           <div class="meta">狀態：${o.status || ""} ｜ 付款：${o.pay || ""}</div>
           <div class="meta">取餐：${pickupText}</div>
+          <div class="meta">班次：${o.shiftName || "未指定"}</div>
           ${orderBadge}
           ${reserveHint}
           ${o.customerName ? `<div class="meta">姓名：${o.customerName}</div>` : ""}
@@ -776,14 +953,14 @@ async function doUpdateStatus(row, status){
 }
 
 /* =========================
-   以下開始：只修改列印部分
+   列印
    ========================= */
 
 function buildCustomerReceiptCanvas(o){
   const items = String(o.content || "").split(",");
   const width = 384;
   const lineHeight = 52;
-  let estimatedHeight = 500 + (items.length * lineHeight);
+  let estimatedHeight = 560 + (items.length * lineHeight);
 
   const canvas = document.createElement("canvas");
   const ctx = canvas.getContext("2d");
@@ -809,6 +986,7 @@ function buildCustomerReceiptCanvas(o){
   ctx.font = "28px sans-serif";
   ctx.fillText("取餐：" + formatPickupDisplay(o.rawPickup || o.pickup), 10, y); y += 42;
   ctx.fillText("付款：" + String(o.pay || ""), 10, y); y += 42;
+  ctx.fillText("班次：" + String(o.shiftName || "未指定"), 10, y); y += 42;
 
   if(o.customerName){
     ctx.fillText("姓名：" + String(o.customerName), 10, y); y += 38;
@@ -845,7 +1023,7 @@ function buildKitchenReceiptCanvas(o){
   const items = String(o.content || "").split(",");
   const width = 384;
   const lineHeight = 56;
-  let estimatedHeight = 420 + (items.length * lineHeight);
+  let estimatedHeight = 500 + (items.length * lineHeight);
 
   const canvas = document.createElement("canvas");
   const ctx = canvas.getContext("2d");
@@ -870,6 +1048,7 @@ function buildKitchenReceiptCanvas(o){
 
   ctx.font = "30px sans-serif";
   ctx.fillText("取餐：" + formatPickupDisplay(o.rawPickup || o.pickup), 10, y); y += 44;
+  ctx.fillText("班次：" + String(o.shiftName || "未指定"), 10, y); y += 44;
 
   if(o.customerName){
     ctx.fillText("姓名：" + String(o.customerName), 10, y); y += 40;
@@ -901,8 +1080,6 @@ function buildKitchenReceiptCanvas(o){
 
 function mergeReceiptCanvases(topReceipt, bottomReceipt){
   const gap = 36;
-
-  // 底部額外留白，讓最後更好撕紙
   const bottomPadding = 96;
 
   const topHeight = Math.ceil(topReceipt.finalHeight);
@@ -933,6 +1110,76 @@ function mergeReceiptCanvases(topReceipt, bottomReceipt){
   );
 
   return finalCanvas;
+}
+
+function buildShiftReceiptCanvas(data){
+  const s = data.summary || {};
+  const width = 384;
+  const lineHeight = 40;
+  const rows = [
+    `班次：${s.shiftName || ""}`,
+    `班次ID：${s.shiftId || ""}`,
+    `開班人員：${s.operator || ""}`,
+    `交班人員：${data.closeOperator || ""}`,
+    `開班時間：${s.startAt || ""}`,
+    `交班時間：${new Date().toLocaleString("zh-TW",{hour12:false})}`,
+    "--------------------------",
+    `本班訂單數：${s.totalOrders || 0}`,
+    `已完成：${s.completedCount || 0}`,
+    `可取餐：${s.readyCount || 0}`,
+    `製作中：${s.makingCount || 0}`,
+    `待列印：${s.waitingPrintCount || 0}`,
+    `待付款：${s.pendingPayCount || 0}`,
+    `已作廢：${s.canceledCount || 0}`,
+    "--------------------------",
+    `現金：$${s.cashTotal || 0}`,
+    `LINEPAY：$${s.linepayTotal || 0}`,
+    `其他付款：$${s.otherPayTotal || 0}`,
+    "--------------------------",
+    `總營業額：$${s.grandTotal || 0}`,
+    "",
+    "本班結束，辛苦了"
+  ];
+
+  const canvas = document.createElement("canvas");
+  const ctx = canvas.getContext("2d");
+  const estimatedHeight = 180 + rows.length * lineHeight + 80;
+
+  canvas.width = width;
+  canvas.height = estimatedHeight;
+
+  ctx.fillStyle = "#FFFFFF";
+  ctx.fillRect(0, 0, width, estimatedHeight);
+  ctx.fillStyle = "#000000";
+  ctx.textBaseline = "top";
+
+  let y = 10;
+
+  ctx.font = "bold 42px sans-serif";
+  ctx.fillText("交班單", 10, y); y += 52;
+
+  ctx.font = "bold 50px sans-serif";
+  ctx.fillText("飯丸屋 POS", 10, y); y += 62;
+
+  ctx.font = "26px monospace";
+  for(const row of rows){
+    ctx.fillText(row, 10, y);
+    y += lineHeight;
+  }
+
+  return {
+    canvas,
+    finalHeight: y + 40
+  };
+}
+
+async function printShiftReceipt(data){
+  if(!printerDevice || !endpointOut){
+    throw new Error("請先建立 USB 連線");
+  }
+
+  const receipt = buildShiftReceiptCanvas(data);
+  await printCanvasToPrinter(receipt.canvas, receipt.finalHeight);
 }
 
 async function printOrderLabel(o){
@@ -983,7 +1230,9 @@ async function printCanvasToPrinter(canvas, finalHeight){
 
 renderCashMenu();
 updateCashSummary();
+fetchCurrentShift();
 setInterval(fetchOrders, 3000);
+setInterval(fetchCurrentShift, 10000);
 fetchOrders();
 </script>
 </body>
