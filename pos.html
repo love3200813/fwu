@@ -842,8 +842,8 @@ async function connectUSB(){
    訂單
    ========================= */
 
-async function fetchOrders(){
-  if(isFetchingOrders) return;
+async function fetchOrders(force = false){
+  if(isFetchingOrders && !force) return;
 
   isFetchingOrders = true;
   try{
@@ -979,7 +979,7 @@ async function setStatus(row, status){
       playBeep();
     }
 
-    await fetchOrders();
+    await fetchOrders(true);
   }catch(err){
     alert("操作失敗：" + err.message);
   }
