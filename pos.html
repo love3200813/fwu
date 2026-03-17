@@ -439,7 +439,7 @@ body{
 
       <div class="mode-switch">
         <button id="modeComboBtn" class="mode-btn active" onclick="setCashMode('combo')">套餐流程</button>
-        <button id="modeSingleBtn" class="mode-btn" onclick="setCashMode('single')">舊版單點</button>
+        <button id="modeSingleBtn" class="mode-btn" onclick="setCashMode('single')">單點模式</button>
       </div>
 
       <div id="comboModeWrap">
@@ -519,63 +519,91 @@ body{
 const GAS_API = "https://script.google.com/macros/s/AKfycbz0HQ7EsRj1kFhP-UT9DIn90WgXt7q-H8vkEh3fD79_4BuCm5HnCFGF9q3h1mf6pY4s/exec";
 
 /* =========================
-   舊版單點
+   單點商品（依附圖更新）
    ========================= */
 const cashMenuItems = [
-  { n:"招牌午餐肉", p:65, d:"經典熱銷，鹹香順口" },
-  { n:"炸蝦塔塔", p:95, d:"炸蝦搭配塔塔醬，口感豐富" },
-  { n:"咖哩可樂餅", p:85, d:"外酥內綿，濃郁咖哩香" },
-  { n:"日式炸雞", p:90, d:"人氣炸雞，多汁帶脆" },
-  { n:"經典雙拼", p:120, d:"一次滿足雙重口味" },
-  { n:"沖繩豆乳", p:45, d:"清爽順口，解膩首選" },
-  { n:"花生醬厚牛", p:110, d:"濃厚系必點款" },
-  { n:"宇治抹茶", p:55, d:"微苦回甘，搭餐剛好" }
+  { category:"握飯糰單點", n:"沖繩經典", p:63, d:"A｜單點" },
+  { category:"握飯糰單點", n:"炙燒明太子", p:73, d:"B｜單點" },
+  { category:"握飯糰單點", n:"雙層起司", p:79, d:"C｜單點" },
+  { category:"握飯糰單點", n:"松露炒菇", p:89, d:"D｜單點" },
+  { category:"握飯糰單點", n:"煙燻雞肉", p:89, d:"E｜單點" },
+  { category:"握飯糰單點", n:"日式炸雞", p:93, d:"F｜單點" },
+  { category:"握飯糰單點", n:"咖哩可樂餅", p:93, d:"G｜單點" },
+  { category:"握飯糰單點", n:"明太子干貝酥", p:93, d:"H｜單點" },
+  { category:"握飯糰單點", n:"炸蝦天婦羅", p:103, d:"I｜單點" },
+  { category:"握飯糰單點", n:"炸魚塔塔醬", p:103, d:"J｜單點" },
+  { category:"握飯糰單點", n:"泡菜燒肉", p:103, d:"K｜單點" },
+  { category:"握飯糰單點", n:"卡拉雞花生醬/海苔醬", p:109, d:"L｜單點" },
+  { category:"握飯糰單點", n:"日式豬排塔塔醬", p:113, d:"M｜單點" },
+
+  { category:"蝦蝦飯單點", n:"蒜味蝦蝦飯", p:169, d:"O｜單點" },
+  { category:"蝦蝦飯單點", n:"奶油蝦蝦飯", p:179, d:"P｜單點" },
+
+  { category:"飲料單點", n:"原味紅茶", p:30, d:"1｜單點飲料" },
+  { category:"飲料單點", n:"無糖豆漿", p:35, d:"2｜單點飲料" },
+  { category:"飲料單點", n:"黑糖豆漿", p:35, d:"3｜單點飲料" },
+  { category:"飲料單點", n:"紅茶豆漿", p:35, d:"4｜單點飲料" },
+  { category:"飲料單點", n:"蜂蜜檸檬", p:35, d:"5｜單點飲料" },
+  { category:"飲料單點", n:"黑芝麻豆漿", p:40, d:"6｜單點飲料" },
+  { category:"飲料單點", n:"日式奶茶", p:40, d:"7｜單點飲料" },
+
+  { category:"副餐單點", n:"咖哩可樂餅", p:35, d:"1｜單點副餐" },
+  { category:"副餐單點", n:"海苔醬薯條", p:43, d:"2｜單點副餐" },
+  { category:"副餐單點", n:"蜂蜜芥末薯條", p:43, d:"3｜單點副餐" },
+  { category:"副餐單點", n:"酥炸菇", p:43, d:"4｜單點副餐" },
+  { category:"副餐單點", n:"酥炸蝦頭", p:43, d:"5｜單點副餐" },
+  { category:"副餐單點", n:"洋蔥圈", p:49, d:"6｜單點副餐" },
+  { category:"副餐單點", n:"黃金雞塊", p:49, d:"7｜單點副餐" },
+  { category:"副餐單點", n:"蜂蜜芥末日式炸雞", p:59, d:"8｜單點副餐" },
+  { category:"副餐單點", n:"炸魚薯條塔塔醬", p:69, d:"9｜單點副餐" }
 ];
 
 /* =========================
-   套餐流程資料
+   套餐流程資料（依附圖更新）
+   N 每日限定限量因價格未知，先不顯示
    ========================= */
 const COMBO_MAINS = [
-  { code:"A", n:"沖繩經典", comboPrice:107, singlePrice:63, d:"超值套餐｜經典口味" },
-  { code:"B", n:"炙燒明太子", comboPrice:117, singlePrice:73, d:"超值套餐｜人氣款" },
-  { code:"C", n:"雙層起司", comboPrice:123, singlePrice:79, d:"超值套餐｜濃郁起司" },
-  { code:"D", n:"松露炒菇", comboPrice:133, singlePrice:89, d:"超值套餐｜香氣濃厚" },
-  { code:"E", n:"煙燻雞肉", comboPrice:133, singlePrice:89, d:"超值套餐｜鹹香耐吃" },
-  { code:"F", n:"日式炸雞", comboPrice:137, singlePrice:93, d:"超值套餐｜熱銷款" },
-  { code:"G", n:"咖哩可樂餅", comboPrice:137, singlePrice:93, d:"超值套餐｜咖哩香" },
-  { code:"H", n:"明太子干貝酥", comboPrice:137, singlePrice:93, d:"超值套餐｜海味系" },
-  { code:"I", n:"炸蝦天婦羅", comboPrice:147, singlePrice:103, d:"超值套餐｜炸蝦款" },
-  { code:"J", n:"炸魚塔塔醬", comboPrice:147, singlePrice:103, d:"超值套餐｜塔塔系" },
-  { code:"K", n:"泡菜燒肉", comboPrice:147, singlePrice:103, d:"超值套餐｜重口味" },
-  { code:"L", n:"卡拉雞花生醬/海苔醬", comboPrice:153, singlePrice:109, d:"超值套餐｜厚醬系" },
-  { code:"M", n:"日式豬排塔塔醬", comboPrice:157, singlePrice:113, d:"超值套餐｜豬排系" },
-  { code:"O", n:"蒜味蝦蝦飯", comboPrice:213, singlePrice:169, d:"蝦蝦飯超值套餐" },
-  { code:"P", n:"奶油蝦蝦飯", comboPrice:223, singlePrice:179, d:"蝦蝦飯超值套餐" }
+  { code:"A", n:"沖繩經典", comboPrice:107, singlePrice:63, d:"超值套餐｜握飯糰" },
+  { code:"B", n:"炙燒明太子", comboPrice:117, singlePrice:73, d:"超值套餐｜握飯糰" },
+  { code:"C", n:"雙層起司", comboPrice:123, singlePrice:79, d:"超值套餐｜握飯糰" },
+  { code:"D", n:"松露炒菇", comboPrice:133, singlePrice:89, d:"超值套餐｜握飯糰" },
+  { code:"E", n:"煙燻雞肉", comboPrice:133, singlePrice:89, d:"超值套餐｜握飯糰" },
+  { code:"F", n:"日式炸雞", comboPrice:137, singlePrice:93, d:"超值套餐｜握飯糰" },
+  { code:"G", n:"咖哩可樂餅", comboPrice:137, singlePrice:93, d:"超值套餐｜握飯糰" },
+  { code:"H", n:"明太子干貝酥", comboPrice:137, singlePrice:93, d:"超值套餐｜握飯糰" },
+  { code:"I", n:"炸蝦天婦羅", comboPrice:147, singlePrice:103, d:"超值套餐｜握飯糰" },
+  { code:"J", n:"炸魚塔塔醬", comboPrice:147, singlePrice:103, d:"超值套餐｜握飯糰" },
+  { code:"K", n:"泡菜燒肉", comboPrice:147, singlePrice:103, d:"超值套餐｜握飯糰" },
+  { code:"L", n:"卡拉雞花生醬/海苔醬", comboPrice:153, singlePrice:109, d:"超值套餐｜握飯糰" },
+  { code:"M", n:"日式豬排塔塔醬", comboPrice:157, singlePrice:113, d:"超值套餐｜握飯糰" },
+  { code:"O", n:"蒜味蝦蝦飯", comboPrice:213, singlePrice:169, d:"超值套餐｜蝦蝦飯" },
+  { code:"P", n:"奶油蝦蝦飯", comboPrice:223, singlePrice:179, d:"超值套餐｜蝦蝦飯" }
 ];
 
 const COMBO_DRINKS = [
-  { code:"1", n:"原味紅茶", extra:0, d:"基本飲料" },
-  { code:"2", n:"無糖豆漿", extra:0, d:"基本飲料" },
-  { code:"3", n:"黑糖豆漿", extra:0, d:"基本飲料" },
-  { code:"4", n:"紅茶豆漿", extra:0, d:"基本飲料" },
-  { code:"5", n:"蜂蜜檸檬", extra:0, d:"基本飲料" },
-  { code:"6", n:"黑芝麻豆漿", extra:5, d:"補差額 +5" },
-  { code:"7", n:"日式奶茶", extra:5, d:"補差額 +5" }
+  { code:"1", n:"原味紅茶", extra:0, singlePrice:30, d:"基本飲料" },
+  { code:"2", n:"無糖豆漿", extra:0, singlePrice:35, d:"基本飲料" },
+  { code:"3", n:"黑糖豆漿", extra:0, singlePrice:35, d:"基本飲料" },
+  { code:"4", n:"紅茶豆漿", extra:0, singlePrice:35, d:"基本飲料" },
+  { code:"5", n:"蜂蜜檸檬", extra:0, singlePrice:35, d:"基本飲料" },
+  { code:"6", n:"黑芝麻豆漿", extra:5, singlePrice:40, d:"補差額 +5" },
+  { code:"7", n:"日式奶茶", extra:5, singlePrice:40, d:"補差額 +5" }
 ];
 
 const COMBO_SIDES = [
-  { code:"1", n:"咖哩可樂餅", extra:0, d:"基本副餐" },
-  { code:"2", n:"海苔醬薯條", extra:0, d:"基本副餐" },
-  { code:"3", n:"蜂蜜芥末薯條", extra:0, d:"基本副餐" },
-  { code:"4", n:"酥炸菇", extra:0, d:"基本副餐" },
-  { code:"5", n:"酥炸蝦頭", extra:0, d:"基本副餐" },
-  { code:"6", n:"洋蔥圈", extra:6, d:"補差額 +6" },
-  { code:"7", n:"黃金雞塊", extra:6, d:"補差額 +6" },
-  { code:"8", n:"蜂蜜芥末日式炸雞", extra:16, d:"補差額 +16" },
-  { code:"9", n:"炸魚薯條塔塔醬", extra:26, d:"補差額 +26" }
+  { code:"1", n:"咖哩可樂餅", extra:0, singlePrice:35, d:"基本副餐" },
+  { code:"2", n:"海苔醬薯條", extra:0, singlePrice:43, d:"基本副餐" },
+  { code:"3", n:"蜂蜜芥末薯條", extra:0, singlePrice:43, d:"基本副餐" },
+  { code:"4", n:"酥炸菇", extra:0, singlePrice:43, d:"基本副餐" },
+  { code:"5", n:"酥炸蝦頭", extra:0, singlePrice:43, d:"基本副餐" },
+  { code:"6", n:"洋蔥圈", extra:6, singlePrice:49, d:"補差額 +6" },
+  { code:"7", n:"黃金雞塊", extra:6, singlePrice:49, d:"補差額 +6" },
+  { code:"8", n:"蜂蜜芥末日式炸雞", extra:16, singlePrice:59, d:"補差額 +16" },
+  { code:"9", n:"炸魚薯條塔塔醬", extra:26, singlePrice:69, d:"補差額 +26" }
 ];
 
 const COMBO_ADDONS = [
+  { code:"veggieSpam", n:"換素餐肉", price:10 },
   { code:"cheese", n:"加起司", price:10 },
   { code:"tamago", n:"加玉子燒", price:15 },
   { code:"shrimp", n:"加炸蝦", price:35 }
@@ -931,6 +959,7 @@ function renderComboDrinkGrid(){
       <div class="cash-name">${item.n}</div>
       <div class="cash-desc">${item.d}</div>
       <div class="cash-price">${item.extra > 0 ? `+$${item.extra}` : "$0"}</div>
+      <div class="cash-mini">單點 $${item.singlePrice}</div>
     </div>
   `).join("");
 }
@@ -942,6 +971,7 @@ function renderComboSideGrid(){
       <div class="cash-name">${item.n}</div>
       <div class="cash-desc">${item.d}</div>
       <div class="cash-price">${item.extra > 0 ? `+$${item.extra}` : "$0"}</div>
+      <div class="cash-mini">單點 $${item.singlePrice}</div>
     </div>
   `).join("");
 }
@@ -1040,7 +1070,7 @@ function buildComboItemsText(){
 }
 
 /* =========================
-   舊版單點
+   單點模式
    ========================= */
 
 function renderCashMenu(){
@@ -1050,7 +1080,7 @@ function renderCashMenu(){
       <div class="cash-name">${item.n}</div>
       <div class="cash-desc">${item.d}</div>
       <div class="cash-price">$${item.p}</div>
-      <div class="cash-mini">舊版單點模式</div>
+      <div class="cash-mini">${item.category}｜單點模式</div>
       <div style="margin-top:14px;display:flex;justify-content:space-between;align-items:center;gap:10px;">
         <div>數量</div>
         <div style="display:flex;align-items:center;gap:10px;">
