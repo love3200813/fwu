@@ -655,47 +655,52 @@ const BUSINESS_OPEN = { h:10, m:30 };
 const BUSINESS_CLOSE = { h:19, m:0 };
 const MIN_RESERVE_MINUTES = 60;
 
+/* =========================
+   套餐資料（依附圖更新）
+   N 每日限定限量因價格未知，先不顯示
+   ========================= */
 const COMBO_MAINS = [
-  { code:"A", n:"沖繩經典", comboPrice:107, singlePrice:63, d:"經典口味，超值套餐" },
-  { code:"B", n:"炙燒明太子", comboPrice:117, singlePrice:73, d:"人氣明太子口味" },
-  { code:"C", n:"雙層起司", comboPrice:123, singlePrice:79, d:"濃郁起司系" },
-  { code:"D", n:"松露炒菇", comboPrice:133, singlePrice:89, d:"松露香氣款" },
-  { code:"E", n:"煙燻雞肉", comboPrice:133, singlePrice:89, d:"煙燻鹹香" },
-  { code:"F", n:"日式炸雞", comboPrice:137, singlePrice:93, d:"熱銷炸雞款" },
-  { code:"G", n:"咖哩可樂餅", comboPrice:137, singlePrice:93, d:"咖哩香氣" },
-  { code:"H", n:"明太子干貝酥", comboPrice:137, singlePrice:93, d:"海味口感" },
-  { code:"I", n:"炸蝦天婦羅", comboPrice:147, singlePrice:103, d:"炸蝦系主餐" },
-  { code:"J", n:"炸魚塔塔醬", comboPrice:147, singlePrice:103, d:"塔塔醬炸魚款" },
-  { code:"K", n:"泡菜燒肉", comboPrice:147, singlePrice:103, d:"重口味推薦" },
-  { code:"L", n:"卡拉雞花生醬/海苔醬", comboPrice:153, singlePrice:109, d:"厚醬濃郁款" },
-  { code:"M", n:"日式豬排塔塔醬", comboPrice:157, singlePrice:113, d:"豬排塔塔系" },
-  { code:"O", n:"蒜味蝦蝦飯", comboPrice:213, singlePrice:169, d:"蝦蝦飯套餐" },
-  { code:"P", n:"奶油蝦蝦飯", comboPrice:223, singlePrice:179, d:"奶油蝦蝦飯套餐" }
+  { code:"A", n:"沖繩經典", comboPrice:107, singlePrice:63, d:"超值套餐｜握飯糰" },
+  { code:"B", n:"炙燒明太子", comboPrice:117, singlePrice:73, d:"超值套餐｜握飯糰" },
+  { code:"C", n:"雙層起司", comboPrice:123, singlePrice:79, d:"超值套餐｜握飯糰" },
+  { code:"D", n:"松露炒菇", comboPrice:133, singlePrice:89, d:"超值套餐｜握飯糰" },
+  { code:"E", n:"煙燻雞肉", comboPrice:133, singlePrice:89, d:"超值套餐｜握飯糰" },
+  { code:"F", n:"日式炸雞", comboPrice:137, singlePrice:93, d:"超值套餐｜握飯糰" },
+  { code:"G", n:"咖哩可樂餅", comboPrice:137, singlePrice:93, d:"超值套餐｜握飯糰" },
+  { code:"H", n:"明太子干貝酥", comboPrice:137, singlePrice:93, d:"超值套餐｜握飯糰" },
+  { code:"I", n:"炸蝦天婦羅", comboPrice:147, singlePrice:103, d:"超值套餐｜握飯糰" },
+  { code:"J", n:"炸魚塔塔醬", comboPrice:147, singlePrice:103, d:"超值套餐｜握飯糰" },
+  { code:"K", n:"泡菜燒肉", comboPrice:147, singlePrice:103, d:"超值套餐｜握飯糰" },
+  { code:"L", n:"卡拉雞花生醬/海苔醬", comboPrice:153, singlePrice:109, d:"超值套餐｜握飯糰" },
+  { code:"M", n:"日式豬排塔塔醬", comboPrice:157, singlePrice:113, d:"超值套餐｜握飯糰" },
+  { code:"O", n:"蒜味蝦蝦飯", comboPrice:213, singlePrice:169, d:"超值套餐｜蝦蝦飯" },
+  { code:"P", n:"奶油蝦蝦飯", comboPrice:223, singlePrice:179, d:"超值套餐｜蝦蝦飯" }
 ];
 
 const COMBO_DRINKS = [
-  { code:"1", n:"原味紅茶", extra:0, d:"基本飲料" },
-  { code:"2", n:"無糖豆漿", extra:0, d:"基本飲料" },
-  { code:"3", n:"黑糖豆漿", extra:0, d:"基本飲料" },
-  { code:"4", n:"紅茶豆漿", extra:0, d:"基本飲料" },
-  { code:"5", n:"蜂蜜檸檬", extra:0, d:"基本飲料" },
-  { code:"6", n:"黑芝麻豆漿", extra:5, d:"補差額 +5" },
-  { code:"7", n:"日式奶茶", extra:5, d:"補差額 +5" }
+  { code:"1", n:"原味紅茶", extra:0, singlePrice:30, d:"基本飲料" },
+  { code:"2", n:"無糖豆漿", extra:0, singlePrice:35, d:"基本飲料" },
+  { code:"3", n:"黑糖豆漿", extra:0, singlePrice:35, d:"基本飲料" },
+  { code:"4", n:"紅茶豆漿", extra:0, singlePrice:35, d:"基本飲料" },
+  { code:"5", n:"蜂蜜檸檬", extra:0, singlePrice:35, d:"基本飲料" },
+  { code:"6", n:"黑芝麻豆漿", extra:5, singlePrice:40, d:"補差額 +5" },
+  { code:"7", n:"日式奶茶", extra:5, singlePrice:40, d:"補差額 +5" }
 ];
 
 const COMBO_SIDES = [
-  { code:"1", n:"咖哩可樂餅", extra:0, d:"基本副餐" },
-  { code:"2", n:"海苔醬薯條", extra:0, d:"基本副餐" },
-  { code:"3", n:"蜂蜜芥末薯條", extra:0, d:"基本副餐" },
-  { code:"4", n:"酥炸菇", extra:0, d:"基本副餐" },
-  { code:"5", n:"酥炸蝦頭", extra:0, d:"基本副餐" },
-  { code:"6", n:"洋蔥圈", extra:6, d:"補差額 +6" },
-  { code:"7", n:"黃金雞塊", extra:6, d:"補差額 +6" },
-  { code:"8", n:"蜂蜜芥末日式炸雞", extra:16, d:"補差額 +16" },
-  { code:"9", n:"炸魚薯條塔塔醬", extra:26, d:"補差額 +26" }
+  { code:"1", n:"咖哩可樂餅", extra:0, singlePrice:35, d:"基本副餐" },
+  { code:"2", n:"海苔醬薯條", extra:0, singlePrice:43, d:"基本副餐" },
+  { code:"3", n:"蜂蜜芥末薯條", extra:0, singlePrice:43, d:"基本副餐" },
+  { code:"4", n:"酥炸菇", extra:0, singlePrice:43, d:"基本副餐" },
+  { code:"5", n:"酥炸蝦頭", extra:0, singlePrice:43, d:"基本副餐" },
+  { code:"6", n:"洋蔥圈", extra:6, singlePrice:49, d:"補差額 +6" },
+  { code:"7", n:"黃金雞塊", extra:6, singlePrice:49, d:"補差額 +6" },
+  { code:"8", n:"蜂蜜芥末日式炸雞", extra:16, singlePrice:59, d:"補差額 +16" },
+  { code:"9", n:"炸魚薯條塔塔醬", extra:26, singlePrice:69, d:"補差額 +26" }
 ];
 
 const COMBO_ADDONS = [
+  { code:"veggieSpam", n:"換素餐肉", price:10 },
   { code:"cheese", n:"加起司", price:10 },
   { code:"tamago", n:"加玉子燒", price:15 },
   { code:"shrimp", n:"加炸蝦", price:35 }
@@ -1074,7 +1079,7 @@ function renderDrinkGrid(){
       <div class="menu-desc">${d.d}</div>
       <div class="menu-price">${d.extra > 0 ? `+$${d.extra}` : "$0"}</div>
       <div class="menu-bottom">
-        <div class="menu-mini">${d.extra > 0 ? "需補差額" : "套餐內含"}</div>
+        <div class="menu-mini">單點 $${d.singlePrice}｜${d.extra > 0 ? "需補差額" : "套餐內含"}</div>
       </div>
     </div>
   `).join("");
@@ -1087,7 +1092,7 @@ function renderSideGrid(){
       <div class="menu-desc">${s.d}</div>
       <div class="menu-price">${s.extra > 0 ? `+$${s.extra}` : "$0"}</div>
       <div class="menu-bottom">
-        <div class="menu-mini">${s.extra > 0 ? "需補差額" : "套餐內含"}</div>
+        <div class="menu-mini">單點 $${s.singlePrice}｜${s.extra > 0 ? "需補差額" : "套餐內含"}</div>
       </div>
     </div>
   `).join("");
