@@ -3,122 +3,128 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>飯丸屋 POS v13.0 嚴格原始架構整合版</title>
+<title>飯丸屋 POS v13.0 完整分類與動態列印版</title>
 <style>
-/* 這裡完全保留你提供的原始 CSS */
-body{ margin:0; font-family:"Microsoft JhengHei",sans-serif; background:#111; color:#fff; }
-.wrap{display:flex;min-height:100vh;}
-.sidebar{ width:300px; background:#1b1b1b; padding:20px; box-sizing:border-box; }
-.sidebar h1{ font-size:32px; margin:0 0 20px 0; }
-.main{ flex:1; padding:20px; box-sizing:border-box; }
-.btn{ width:100%; border:none; padding:14px; margin-bottom:10px; border-radius:12px; cursor:pointer; font-size:16px; font-weight:800; }
-.btn-usb{background:#f1f1f1;color:#111;}
-.btn-info{background:#3498db;color:#fff;}
-.btn-order{background:#f39c12;color:#111;}
-.btn-start{background:#2ecc71;color:#111;}
-.btn-shift{background:#e74c3c;color:#fff;}
-.usb-status,.msg,.shift-box{ font-size:14px; line-height:1.6; margin-top:10px; }
-.usb-status{color:#7CFC98;}
-.msg{color:#ffd166;}
-.shift-box{ margin-top:14px; background:#242424; border:1px solid #333; border-radius:14px; padding:12px; }
-.shift-title{ font-size:15px; font-weight:900; margin-bottom:8px; }
-.shift-active{ color:#7CFC98; }
-.shift-inactive{ color:#ff8c8c; }
+/* --- 基礎風格 --- */
+body{ margin:0; font-family:"Microsoft JhengHei",sans-serif; background:#111; color:#fff; overflow:hidden;}
+.wrap{ display:flex; height:100vh; }
+.sidebar{ width:300px; background:#1b1b1b; padding:20px; box-sizing:border-box; border-right:1px solid #333; display:flex; flex-direction:column; }
+.main{ flex:1; padding:20px; box-sizing:border-box; overflow-y:auto; background:#111; }
 
-/* 點餐面板與購物車樣式 */
-.cash-panel{ display:none; margin-bottom:20px; background:#1f1f1f; border-radius:16px; padding:18px; border:1px solid #333; }
-.cash-panel.show{display:block;}
-.section-title { font-size:18px; font-weight:bold; color:#f39c12; margin:15px 0 10px; }
+/* --- 按鈕樣式 --- */
+.btn{ width:100%; border:none; padding:14px; margin-bottom:10px; border-radius:12px; cursor:pointer; font-size:16px; font-weight:800; transition:.2s; }
+.btn-usb{ background:#f1f1f1; color:#111; }
+.btn-order{ background:#f39c12; color:#111; }
+.btn-start{ background:#2ecc71; color:#111; }
+.btn-shift{ background:#e74c3c; color:#fff; }
+.btn:active{ transform: scale(0.98); }
+.btn:disabled{ opacity: 0.4; cursor: not-allowed; }
+
+/* --- 點餐面板區域 --- */
+.cash-panel{ display:none; background:#1f1f1f; border-radius:16px; padding:20px; border:1px solid #333; margin-bottom:20px; }
+.cash-panel.show{ display:block; }
+.section-title { font-size:18px; font-weight:bold; color:#f39c12; margin:15px 0 10px; border-left:4px solid #f39c12; padding-left:10px; }
+
+/* --- 網格與卡片 --- */
 .cash-grid{ display:grid; grid-template-columns:repeat(auto-fill, minmax(140px, 1fr)); gap:10px; }
-.cash-item{ background:#2b2b2b; border-radius:12px; padding:12px; border:1px solid #3a3a3a; cursor:pointer; text-align:center;}
-.cash-item.active{ border-color:#f39c12; }
-.step-lock{ opacity:.3; pointer-events:none; }
-.basket-box{ background:#2b2b2b; border:2px solid #f39c12; border-radius:16px; padding:16px; margin-top:15px; }
-.basket-item{ display:flex; justify-content:space-between; padding:8px 0; border-bottom:1px solid #444; }
+.cash-item{ background:#2b2b2b; border-radius:12px; padding:12px; border:1px solid #3a3a3a; cursor:pointer; text-align:center; }
+.cash-item:hover{ border-color:#888; }
+.cash-item.active{ border-color:#f39c12; background:#333; box-shadow:0 0 8px rgba(243,156,18,0.3); }
+.cash-item b{ display:block; font-size:16px; margin-bottom:4px; }
+.cash-item span{ font-size:13px; color:#aaa; }
 
-/* 訂單卡片樣式 */
-.grid{ display:grid; grid-template-columns:repeat(auto-fit,minmax(320px,1fr)); gap:15px; }
-.card{ background:#2b2b2b; border-radius:16px; padding:16px; border-left:6px solid #f39c12; display:flex; flex-direction:column; }
-.seq{ font-size:30px; font-weight:900; color:#f39c12; }
-.content{ margin-top:12px; font-size:22px; line-height:1.6; white-space:pre-line; }
+.step-lock{ opacity:.3; pointer-events:none; filter: grayscale(1); }
+
+/* --- 購物車 --- */
+.basket-box{ background:#2b2b2b; border:2px solid #f39c12; border-radius:16px; padding:16px; margin-top:20px; }
+.basket-item{ display:flex; justify-content:space-between; padding:10px 0; border-bottom:1px solid #444; font-size:15px; }
+.del-btn{ color:#ff4d4d; cursor:pointer; font-weight:bold; padding:0 10px; }
+
+/* --- 訂單列表 --- */
+.order-grid{ display:grid; grid-template-columns:repeat(auto-fill, minmax(320px, 1fr)); gap:15px; }
+.order-card{ background:#1b1b1b; border-radius:16px; padding:16px; border-left:6px solid #f39c12; position:relative; }
+.order-seq{ font-size:32px; font-weight:900; color:#f39c12; }
+.order-content{ font-size:18px; line-height:1.6; color:#ffd166; margin:10px 0; white-space:pre-wrap; }
 </style>
 </head>
 <body>
 
 <div class="wrap">
   <div class="sidebar">
-    <h1>🍙 飯丸屋 POS</h1>
+    <h2 style="margin:0 0 20px 0;">🍙 飯丸屋 POS</h2>
     <button class="btn btn-usb" onclick="connectUSB()">🔌 建立 USB 連線</button>
-    <button class="btn btn-info" onclick="fetchOrders()">🔄 重新整理訂單</button>
-    <button class="btn btn-order" onclick="toggleCashPanel()">🛒 現場代客下單</button>
+    <button class="btn btn-order" onclick="toggleCashPanel()">🛒 現場點餐系統</button>
+    <button class="btn" style="background:#3498db; color:#fff;" onclick="fetchOrders()">🔄 刷新訂單</button>
     <button class="btn btn-start" onclick="handleStartShift()">🟢 開班</button>
     <button class="btn btn-shift" onclick="handleCloseShift()">🧾 結單 / 交班</button>
 
-    <div id="usbStatus" class="usb-status">尚未連線</div>
-    <div class="shift-box" id="shiftBox">
-      <div class="shift-title">班次狀態</div>
-      <div id="shiftStatus" class="shift-inactive">目前尚未開班</div>
-      <div id="shiftSummaryMini" style="margin-top:10px;color:#ccc;font-size:13px;line-height:1.7;"></div>
-    </div>
-    <div id="msg" class="msg"></div>
+    <div id="usbStatus" style="color:#7CFC98; font-size:13px; margin-top:auto;">尚未連線</div>
+    <div id="shiftStatus" style="color:#ccc; font-size:13px; margin-top:5px;">讀取班次中...</div>
+    <div id="msg" style="color:#ffd166; font-size:12px; margin-top:10px;"></div>
   </div>
 
   <div class="main">
+    
     <div id="cashPanel" class="cash-panel">
       <div style="display:flex; justify-content:space-between; align-items:center;">
-        <h2>🛒 現場點餐 (多筆購物車)</h2>
-        <div>
-          <button onclick="setCashMode('combo')" id="mBtnCombo" style="padding:6px 12px; background:#f39c12; color:#111; font-weight:bold; border-radius:8px; border:none; cursor:pointer;">套餐流程</button>
-          <button onclick="setCashMode('single')" id="mBtnSingle" style="padding:6px 12px; background:#444; color:#fff; font-weight:bold; border-radius:8px; border:none; cursor:pointer;">單點模式</button>
+        <h2 style="margin:0; color:#f39c12;">現場代客點餐</h2>
+        <div style="background:#333; border-radius:10px; padding:5px;">
+          <button id="mBtnCombo" class="btn" style="width:80px; padding:6px; margin:0; background:#f39c12;" onclick="setCashMode('combo')">套餐</button>
+          <button id="mBtnSingle" class="btn" style="width:80px; padding:6px; margin:0; background:#444;" onclick="setCashMode('single')">單點</button>
         </div>
       </div>
 
       <div id="cashComboWrap">
-        <div class="section-title">1. 選主餐</div>
+        <div class="section-title">步驟 1：選擇主餐 (A-P)</div>
         <div id="posMainGrid" class="cash-grid"></div>
+
         <div id="posAddonStep" class="step-lock">
-          <div class="section-title">加料 (可多選)</div>
-          <div id="posAddonGrid" class="cash-grid"></div>
+            <div class="section-title">主餐加料 (可多選)</div>
+            <div id="posAddonGrid" class="cash-grid"></div>
         </div>
+
         <div id="posDrinkStep" class="step-lock">
-          <div class="section-title">2. 選飲料</div>
-          <div id="posDrinkGrid" class="cash-grid"></div>
+            <div class="section-title">步驟 2：選擇套餐飲品</div>
+            <div id="posDrinkGrid" class="cash-grid"></div>
         </div>
+
         <div id="posSideStep" class="step-lock">
-          <div class="section-title">3. 選副餐</div>
-          <div id="posSideGrid" class="cash-grid"></div>
+            <div class="section-title">步驟 3：選擇套餐副餐</div>
+            <div id="posSideGrid" class="cash-grid"></div>
         </div>
       </div>
 
       <div id="cashSingleWrap" style="display:none;">
-        <div class="section-title">主食單點</div>
-        <div id="posSMainGrid" class="cash-grid"></div>
+        <div class="section-title">飯糰/蝦蝦飯單點</div>
+        <div id="posSingleMainGrid" class="cash-grid"></div>
         <div class="section-title">飲品單點</div>
-        <div id="posSDrinkGrid" class="cash-grid"></div>
+        <div id="posSingleDrinkGrid" class="cash-grid"></div>
         <div class="section-title">副餐單點</div>
-        <div id="posSSideGrid" class="cash-grid"></div>
+        <div id="posSingleSideGrid" class="cash-grid"></div>
       </div>
 
       <div class="basket-box">
-        <div style="font-weight:bold; font-size:18px;">🛒 點餐清單</div>
-        <div id="posBasketList" style="min-height:30px; color:#999; margin-top:10px;">尚未加入任何餐點</div>
-        <div style="text-align:right; font-size:24px; font-weight:bold; margin:10px 0; color:#2ecc71;">總計: $<span id="posTotal">0</span></div>
-        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px;">
-          <button class="btn" style="background:#555; color:#fff;" onclick="addToPosBasket()">＋加入清單</button>
-          <button id="posSubmitBtn" class="btn btn-order" onclick="submitPosOrder()" disabled>確認送出現場訂單</button>
+        <div style="font-weight:bold; margin-bottom:10px; display:flex; justify-content:space-between;">
+            <span>🛒 待送出清單</span>
+            <span style="color:#2ecc71;">總額: $<span id="posTotal">0</span></span>
+        </div>
+        <div id="posBasketList" style="min-height:30px; color:#999; font-size:14px;">清單目前是空的</div>
+        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px; margin-top:15px;">
+          <button class="btn" style="background:#555; color:#fff;" onclick="addToPosBasket()">＋加入項目</button>
+          <button id="posSubmitBtn" class="btn btn-order" onclick="submitPosOrder()" disabled>確認送出 (現金取餐)</button>
         </div>
       </div>
     </div>
 
-    <h2>即時訂單</h2>
-    <div id="orders" class="grid"></div>
+    <h2>即時訂單狀態</h2>
+    <div id="orders" class="order-grid"></div>
   </div>
 </div>
 
 <script>
 const GAS_API = "https://script.google.com/macros/s/AKfycbz0HQ7EsRj1kFhP-UT9DIn90WgXt7q-H8vkEh3fD79_4BuCm5HnCFGF9q3h1mf6pY4s/exec";
 
-/* 嚴格對齊原始資料與 A-P 主餐 */
+/* 完整資料庫 */
 const MAINS = [
   {code:"A", n:"沖繩經典", cp:107, sp:63}, {code:"B", n:"炙燒明太子", cp:117, sp:73}, {code:"C", n:"雙層起司", cp:123, sp:79},
   {code:"D", n:"松露炒菇", cp:133, sp:89}, {code:"E", n:"煙燻雞肉", cp:133, sp:89}, {code:"F", n:"日式炸雞", cp:137, sp:93},
@@ -130,69 +136,190 @@ const DRINKS = [{n:"原味紅茶",e:0,p:30},{n:"無糖豆漿",e:0,p:35},{n:"黑�
 const SIDES = [{n:"咖哩可樂餅",e:0,p:35},{n:"海苔薯條",e:0,p:43},{n:"蜂蜜芥末薯條",e:0,p:43},{n:"酥炸菇",e:0,p:43},{n:"酥炸蝦頭",e:0,p:43},{n:"洋蔥圈",e:6,p:49},{n:"黃金雞塊",e:6,p:49},{n:"日式炸雞",e:16,p:59},{n:"炸魚薯條",e:26,p:69}];
 const ADDONS = [{n:"換素餐肉",p:10},{n:"加起司",p:10},{n:"加玉子燒",p:15},{n:"加炸蝦",p:35}];
 
-/* --- 狀態變數 --- */
-let posBasket = [], cashMode = "combo", curSel = { main:null, drink:null, side:null, addons:[] }, singleSel = {};
-let printerDevice = null, endpointOut = null, currentShift = null, isFetching = false;
+/* 狀態管理 */
+let posBasket = [];
+let cashMode = "combo";
+let curSel = { main: null, drink: null, side: null, addons: [] };
+let singleSel = {}; 
+let printerDevice = null, endpointOut = null, currentShift = null;
 
-/* --- 原始架構中的連線邏輯 (connectUSB) --- */
+function toggleCashPanel() { document.getElementById("cashPanel").classList.toggle("show"); }
+
+function setCashMode(m) {
+    cashMode = m;
+    document.getElementById("cashComboWrap").style.display = m==='combo'?'block':'none';
+    document.getElementById("cashSingleWrap").style.display = m==='single'?'block':'none';
+    document.getElementById("mBtnCombo").style.background = m==='combo'?'#f39c12':'#444';
+    document.getElementById("mBtnSingle").style.background = m==='single'?'#f39c12':'#444';
+}
+
+/* 渲染點餐介面 */
+function renderComboUI() {
+    document.getElementById("posMainGrid").innerHTML = MAINS.map(m=>`
+        <div class="cash-item ${curSel.main?.code===m.code?'active':''}" onclick="selMain('${m.code}')"><b>${m.code}.${m.n}</b><span>套餐 $${m.cp}</span></div>
+    `).join("");
+    document.getElementById("posAddonGrid").innerHTML = ADDONS.map(a=>`
+        <div class="cash-item ${curSel.addons.some(x=>x.n===a.n)?'active':''}" onclick="toggleAddon('${a.n}')"><b>${a.n}</b><span>+$${a.p}</span></div>
+    `).join("");
+    document.getElementById("posDrinkGrid").innerHTML = DRINKS.map(d=>`
+        <div class="cash-item ${curSel.drink?.n===d.n?'active':''}" onclick="selDrink('${d.n}')"><b>${d.n}</b><span>${d.e>0?'+$'+d.e:'$0'}</span></div>
+    `).join("");
+    document.getElementById("posSideGrid").innerHTML = SIDES.map(s=>`
+        <div class="cash-item ${curSel.side?.n===s.n?'active':''}" onclick="selSide('${s.n}')"><b>${s.n}</b><span>${s.e>0?'+$'+s.e:'$0'}</span></div>
+    `).join("");
+}
+
+function selMain(c) {
+    curSel.main = MAINS.find(x=>x.code===c);
+    document.getElementById("posAddonStep").classList.remove("step-lock");
+    document.getElementById("posDrinkStep").classList.remove("step-lock");
+    renderComboUI();
+}
+function toggleAddon(n) {
+    const a = ADDONS.find(x=>x.n===n);
+    const i = curSel.addons.findIndex(x=>x.n===n);
+    if(i>-1) curSel.addons.splice(i,1); else curSel.addons.push(a);
+    renderComboUI();
+}
+function selDrink(n) {
+    curSel.drink = DRINKS.find(x=>x.n===n);
+    document.getElementById("posSideStep").classList.remove("step-lock");
+    renderComboUI();
+}
+function selSide(n) {
+    curSel.side = SIDES.find(x=>x.n===n);
+    renderComboUI();
+}
+
+function renderSingleUI() {
+    const renderItems = (items, targetId) => {
+        document.getElementById(targetId).innerHTML = items.map(i=>`
+            <div class="cash-item">
+                <b>${i.n}</b><span>$${i.p||i.sp}</span>
+                <div style="margin-top:8px; display:flex; justify-content:space-between; align-items:center;">
+                    <button onclick="changeSingleQty('${i.n}',-1,${i.p||i.sp})" style="padding:2px 8px;">-</button>
+                    <span id="q-${i.n}" style="font-weight:bold;">${singleSel[i.n]?.q || 0}</span>
+                    <button onclick="changeSingleQty('${i.n}',1,${i.p||i.sp})" style="padding:2px 8px;">+</button>
+                </div>
+            </div>
+        `).join("");
+    };
+    renderItems(MAINS, "posSingleMainGrid");
+    renderItems(DRINKS, "posSingleDrinkGrid");
+    renderItems(SIDES, "posSingleSideGrid");
+}
+
+function changeSingleQty(n, d, p) {
+    if(!singleSel[n]) singleSel[n] = { q:0, p:p };
+    singleSel[n].q += d;
+    if(singleSel[n].q <= 0) delete singleSel[n];
+    document.getElementById(`q-${n}`).innerText = singleSel[n]?.q || 0;
+}
+
+/* 購物車處理 */
+function addToPosBasket() {
+    if (cashMode === 'combo') {
+        if(!curSel.main || !curSel.drink || !curSel.side) return alert("套餐步驟未完成");
+        const price = curSel.main.cp + curSel.drink.e + curSel.side.e + curSel.addons.reduce((s,a)=>s+a.p,0);
+        const desc = `套餐:${curSel.main.n}(配:${curSel.drink.n}/${curSel.side.n}${curSel.addons.length?',加:'+curSel.addons.map(a=>a.n).join('|'):''})`;
+        posBasket.push({ desc, price });
+        resetCombo();
+    } else {
+        const keys = Object.keys(singleSel);
+        if(!keys.length) return alert("尚未選擇數量");
+        keys.forEach(k => {
+            posBasket.push({ desc: `單點:${k} x ${singleSel[k].q}`, price: singleSel[k].p * singleSel[k].q });
+        });
+        singleSel = {}; renderSingleUI();
+    }
+    renderBasketList();
+}
+
+function resetCombo() {
+    curSel = { main: null, drink: null, side: null, addons: [] };
+    ["posAddonStep","posDrinkStep","posSideStep"].forEach(id=>document.getElementById(id).classList.add("step-lock"));
+    renderComboUI();
+}
+
+function renderBasketList() {
+    const list = document.getElementById("posBasketList");
+    let total = 0;
+    if(!posBasket.length) list.innerText = "清單目前是空的";
+    else {
+        list.innerHTML = posBasket.map((item, i) => {
+            total += item.price;
+            return `<div class="basket-item"><span>${item.desc}</span><span>$${item.price}<b class="del-btn" onclick="posBasket.splice(${i},1);renderBasketList();">✕</b></span></div>`;
+        }).join("");
+    }
+    document.getElementById("posTotal").innerText = total;
+    document.getElementById("posSubmitBtn").disabled = !posBasket.length;
+}
+
+/* USB 與列印優化 (核心: 動態高度 Canvas) */
 async function connectUSB(){
     try {
-        setMsg("正在尋找印表機...");
         printerDevice = await navigator.usb.requestDevice({ filters:[] });
         await printerDevice.open();
-        if(printerDevice.configuration === null) await printerDevice.selectConfiguration(1);
+        await printerDevice.selectConfiguration(1);
         const iface = printerDevice.configuration.interfaces[0];
         await printerDevice.claimInterface(iface.interfaceNumber);
         endpointOut = iface.alternates[0].endpoints.find(e => e.direction === 'out').endpointNumber;
-        document.getElementById("usbStatus").innerText = "USB 已連線: " + printerDevice.productName;
-        setMsg("USB 連線成功");
-        fetchOrders();
+        document.getElementById("usbStatus").innerText = "🔌 USB 已連線: " + printerDevice.productName;
     } catch(err) { alert("USB 連線失敗: " + err); }
 }
 
-/* --- 原始架構中的列印邏輯優化 (增加動態高度與 FEED) --- */
 async function printOrder(o) {
     if(!printerDevice || !endpointOut) return;
+    
     const items = String(o.content || "").split(" | ");
     const width = 384; 
-    const headerH = 220, itemH = items.length * 40, footerH = 160;
-    const totalHeight = headerH + itemH + footerH;
+    const headerHeight = 220; 
+    const itemHeight = items.length * 38; 
+    const footerHeight = 150;
+    const totalHeight = headerHeight + itemHeight + footerHeight;
 
     const canvas = document.createElement("canvas");
     const ctx = canvas.getContext("2d");
     canvas.width = width; canvas.height = totalHeight;
-    ctx.fillStyle = "#fff"; ctx.fillRect(0, 0, width, totalHeight);
+    ctx.fillStyle = "#fff"; ctx.fillRect(0,0,width,totalHeight);
     ctx.fillStyle = "#000"; ctx.textBaseline = "top";
     
     let y = 20;
     ctx.font = "bold 38px Arial"; ctx.fillText("飯丸屋 - 現場單", 10, y); y += 60;
     ctx.font = "bold 65px Arial"; ctx.fillText(o.seq, 10, y); y += 75;
     ctx.font = "24px Arial";
-    ctx.fillText("取餐：現場取餐", 10, y); y += 40;
-    ctx.fillText("付款：現金", 10, y); y += 40;
-    ctx.fillText("---------------------------", 10, y); y += 35;
-    ctx.font = "bold 26px Arial";
-    items.forEach(line => { ctx.fillText("・" + line, 10, y); y += 40; });
-    ctx.fillText("---------------------------", 10, y); y += 40;
-    ctx.font = "bold 45px Arial"; ctx.fillText("總計 $" + o.total, 10, y); y += 65;
+    ctx.fillText("取餐方式：現場取餐", 10, y); y += 35;
+    ctx.fillText("付款方式：現金付款", 10, y); y += 35;
+    ctx.fillText("---------------------------", 10, y); y += 30;
     
-    await doPrint(canvas); // 呼叫原始的點陣位元轉換函數
+    ctx.font = "bold 26px Arial";
+    items.forEach(line => {
+        ctx.fillText("・" + line, 10, y);
+        y += 38;
+    });
+    
+    ctx.fillText("---------------------------", 10, y); y += 40;
+    ctx.font = "bold 45px Arial"; ctx.fillText("總計 $" + o.total, 10, y); y += 60;
+    
+    // 重新切換到正確高度的副本 Canvas 以防渲染問題
+    const finalCanvas = document.createElement("canvas");
+    finalCanvas.width = width; finalCanvas.height = y + 50;
+    finalCanvas.getContext("2d").drawImage(canvas, 0, 0);
+    await sendToPrinter(finalCanvas);
 }
 
-/* --- 原始架構中的點陣位元運算邏輯 (doPrint) --- */
-async function doPrint(canvas) {
+async function sendToPrinter(canvas) {
     const ctx = canvas.getContext("2d");
-    const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
+    const imgData = ctx.getImageData(0,0,canvas.width,canvas.height).data;
     const widthBytes = canvas.width / 8;
     const bitmap = new Uint8Array(widthBytes * canvas.height);
     for(let i=0; i<imgData.length; i+=4) {
         if((imgData[i]+imgData[i+1]+imgData[i+2])/3 < 128) {
             const idx = i/4;
-            const x = idx % canvas.width;
-            const y = Math.floor(idx / canvas.width);
-            bitmap[y * widthBytes + Math.floor(x/8)] |= (1 << (7 - (x%8)));
+            bitmap[Math.floor(idx/canvas.width) * widthBytes + Math.floor((idx%canvas.width)/8)] |= (1 << (7 - ((idx%canvas.width)%8)));
         }
     }
+    // 動態 SIZE 指令
     const mmHeight = Math.ceil(canvas.height / 8);
     const header = new TextEncoder().encode(`SIZE 48 mm, ${mmHeight} mm\r\nGAP 0,0\r\nCLS\r\nBITMAP 0,0,${widthBytes},${canvas.height},0,`);
     const footer = new TextEncoder().encode("\r\nPRINT 1,1\r\nFEED 20\r\n");
@@ -201,133 +328,74 @@ async function doPrint(canvas) {
     await printerDevice.transferOut(endpointOut, data);
 }
 
-/* --- 原始架構中的班次管理邏輯 --- */
-async function fetchShift() {
-    const res = await fetch(GAS_API + "?action=getCurrentShift&t=" + Date.now());
-    currentShift = await res.json();
-    const div = document.getElementById("shiftStatus");
-    const mini = document.getElementById("shiftSummaryMini");
-    if(currentShift.active){
-        div.className = "shift-active"; div.innerHTML = "已開班 - " + currentShift.operator;
-        const sumRes = await fetch(GAS_API + "?action=getShiftSummary&t=" + Date.now());
-        const s = await sumRes.json();
-        mini.innerHTML = `訂單數：${s.totalOrders}<br>總額：$${s.grandTotal}<br>現金：$${s.cashTotal}`;
-    } else {
-        div.className = "shift-inactive"; div.innerHTML = "目前尚未開班"; mini.innerHTML = "";
-    }
-}
-async function handleStartShift() {
-    const op = prompt("開班人員姓名?"); if(!op) return;
-    await fetch(GAS_API + `?action=startShift&operator=${encodeURIComponent(op)}&shiftName=現場班`);
-    fetchShift();
-}
-async function handleCloseShift() {
-    if(!confirm("確認要交班嗎？")) return;
-    await fetch(GAS_API + "?action=closeShift");
-    fetchShift();
-}
-
-/* --- 原始架構中的訂單抓取邏輯 (fetchOrders) --- */
+/* 訂單與狀態同步 */
 async function fetchOrders() {
-    if(isFetching) return;
-    isFetching = true;
     try {
         const res = await fetch(GAS_API + "?action=getOrders&t=" + Date.now());
         const list = await res.json();
         renderOrders(list);
-        list.forEach(o => { if(o.status === "待列印") { printOrder(o); updateStatus(o.row, "製作中"); } });
-    } catch(e){} finally { isFetching = false; }
+        list.forEach(o => { if(o.status === "待列印") printOrder(o); });
+    } catch(e) { console.log("Fetch Error"); }
 }
+
 function renderOrders(list) {
     document.getElementById("orders").innerHTML = list.map(o => `
-        <div class="card">
-            <div class="seq">${o.seq}</div>
+        <div class="order-card">
+            <div class="order-seq">${o.seq}</div>
             <div style="font-size:13px; color:#aaa;">${o.status} | ${o.pay}</div>
-            <div class="content">${o.content.split(' | ').join('\n')}</div>
-            <div style="font-size:22px; font-weight:bold;">$${o.total}</div>
-            <div style="margin-top:10px; display:flex; gap:10px;">
-                <button onclick="updateStatus(${o.row}, '可取餐')" class="btn" style="padding:8px; font-size:14px; background:#3498db; color:#fff;">通知取餐</button>
-                <button onclick="updateStatus(${o.row}, '已完成')" class="btn" style="padding:8px; font-size:14px; background:#2ecc71; color:#fff;">完成</button>
+            <div class="order-content">${o.content.split(' | ').join('\n')}</div>
+            <div style="font-size:22px; font-weight:bold; color:#2ecc71;">$${o.total}</div>
+            <div style="margin-top:12px; display:flex; gap:10px;">
+                <button class="btn" style="padding:8px; font-size:14px; background:#3498db; color:#fff;" onclick="updateStatus(${o.row}, '可取餐')">通知取餐</button>
+                <button class="btn" style="padding:8px; font-size:14px; background:#2ecc71; color:#fff;" onclick="updateStatus(${o.row}, '已完成')">完成</button>
             </div>
         </div>
     `).join("");
 }
+
 async function updateStatus(row, status) {
     await fetch(GAS_API + `?action=updateStatus&row=${row}&status=${status}`);
     fetchOrders();
 }
 
-/* --- 購物車與 UI 交互邏輯 (分類與加入) --- */
-function toggleCashPanel() { document.getElementById("cashPanel").classList.toggle("show"); }
-function setCashMode(m) {
-    cashMode = m;
-    document.getElementById("cashComboWrap").style.display = m==='combo'?'block':'none';
-    document.getElementById("cashSingleWrap").style.display = m==='single'?'block':'none';
-    document.getElementById("mBtnCombo").style.background = m==='combo'?'#f39c12':'#444';
-    document.getElementById("mBtnSingle").style.background = m==='single'?'#f39c12':'#444';
-}
-function renderComboUI() {
-    document.getElementById("posMainGrid").innerHTML = MAINS.map(m=>`
-        <div class="cash-item ${curSel.main?.code===m.code?'active':''}" onclick="selMain('${m.code}')"><b>${m.code}.${m.n}</b><span>$${m.cp}</span></div>
-    `).join("");
-    document.getElementById("posAddonGrid").innerHTML = ADDONS.map(a=>`
-        <div class="cash-item ${curSel.addons.some(x=>x.n===a.n)?'active':''}" onclick="toggleAddon('${a.n}')"><b>${a.n}</b><span>+$${a.p}</span></div>
-    `).join("");
-    document.getElementById("posDrinkGrid").innerHTML = DRINKS.map(d=>`
-        <div class="cash-item ${curSel.drink?.n===d.n?'active':''}" onclick="selDrink('${d.n}')"><b>${d.n}</b><span>+$${d.e}</span></div>
-    `).join("");
-    document.getElementById("posSideGrid").innerHTML = SIDES.map(s=>`
-        <div class="cash-item ${curSel.side?.n===s.n?'active':''}" onclick="selSide('${s.n}')"><b>${s.n}</b><span>+$${s.e}</span></div>
-    `).join("");
-}
-function selMain(c) { curSel.main = MAINS.find(x=>x.code===c); ["posAddonStep","posDrinkStep"].forEach(id=>document.getElementById(id).classList.remove("step-lock")); renderComboUI(); }
-function toggleAddon(n) { const a = ADDONS.find(x=>x.n===n); const i = curSel.addons.findIndex(x=>x.n===n); if(i>-1) curSel.addons.splice(i,1); else curSel.addons.push(a); renderComboUI(); }
-function selDrink(n) { curSel.drink = DRINKS.find(x=>x.n===n); document.getElementById("posSideStep").classList.remove("step-lock"); renderComboUI(); }
-function selSide(n) { curSel.side = SIDES.find(x=>x.n===n); renderComboUI(); }
-
-function renderSingleUI() {
-    const r = (items, id) => {
-        document.getElementById(id).innerHTML = items.map(i=>`<div class="cash-item"><b>${i.n}</b><span>$${i.p||i.sp}</span><div style="margin-top:8px; display:flex; justify-content:space-between; align-items:center;"><button onclick="editSingle('${i.n}',-1,${i.p||i.sp})">-</button><span id="posq-${i.n}">${singleSel[i.n]?.q || 0}</span><button onclick="editSingle('${i.n}',1,${i.p||i.sp})">+</button></div></div>`).join("");
-    };
-    r(MAINS, "posSMainGrid"); r(DRINKS, "posSDrinkGrid"); r(SIDES, "posSSideGrid");
-}
-function editSingle(n, d, p) { if(!singleSel[n]) singleSel[n] = { q:0, p:p }; singleSel[n].q += d; if(singleSel[n].q <= 0) delete singleSel[n]; document.getElementById(`posq-${n}`).innerText = singleSel[n]?.q || 0; }
-
-function addToPosBasket() {
-    if (cashMode === 'combo') {
-        if(!curSel.main || !curSel.drink || !curSel.side) return alert("套餐未完成");
-        const price = curSel.main.cp + curSel.drink.e + curSel.side.e + curSel.addons.reduce((s,a)=>s+a.p,0);
-        const desc = `${curSel.main.n}(配:${curSel.drink.n}/${curSel.side.n}${curSel.addons.length?',加:'+curSel.addons.map(a=>a.n).join('|'):''})`;
-        posBasket.push({ desc, price });
-        curSel = { main:null, drink:null, side:null, addons:[] };
-        ["posAddonStep","posDrinkStep","posSideStep"].forEach(id=>document.getElementById(id).classList.add("step-lock"));
-        renderComboUI();
-    } else {
-        Object.keys(singleSel).forEach(k => posBasket.push({ desc: `${k} x ${singleSel[k].q}`, price: singleSel[k].p * singleSel[k].q }));
-        singleSel = {}; renderSingleUI();
-    }
-    renderBasketList();
-}
-function renderBasketList() {
-    const list = document.getElementById("posBasketList"); let total = 0;
-    if(!posBasket.length) list.innerText = "尚未加入項目";
-    else { list.innerHTML = posBasket.map((item, i) => { total += item.price; return `<div class="basket-item"><span>${item.desc}</span><span>$${item.price}<b style="color:red;cursor:pointer;margin-left:10px;" onclick="posBasket.splice(${i},1);renderBasketList();">✕</b></span></div>`; }).join(""); }
-    document.getElementById("posTotal").innerText = total; document.getElementById("posSubmitBtn").disabled = !posBasket.length;
-}
-
 async function submitPosOrder() {
-    if(!currentShift?.active) return alert("請先開班！");
-    const btn = document.getElementById("posSubmitBtn"); btn.disabled = true;
-    const orderData = { items: posBasket.map(i=>i.desc).join(" | "), total: posBasket.reduce((s,i)=>s+i.price, 0), pickupTime: "現場取餐", payMethod: "現金", customerName: "現場代點", customerPhone: "" };
+    if(!currentShift?.active) return alert("請先進行開班作業！");
+    const btn = document.getElementById("posSubmitBtn");
+    btn.disabled = true;
+    const orderData = {
+        items: posBasket.map(i=>i.desc).join(" | "),
+        total: posBasket.reduce((s,i)=>s+i.price, 0),
+        pickupTime: "現場取餐", payMethod: "現金",
+        customerName: "店員代點", customerPhone: ""
+    };
     await fetch(GAS_API + "?action=submitOrder&orderData=" + JSON.stringify(orderData));
-    posBasket = []; renderBasketList(); fetchOrders(); btn.disabled = false;
+    posBasket = []; renderBasketList(); fetchOrders();
+    btn.disabled = false;
 }
 
-function setMsg(t) { document.getElementById("msg").innerText = t; }
+/* 班次邏輯 */
+async function handleStartShift() {
+    const op = prompt("請輸入開班人員姓名:"); if(!op) return;
+    const res = await fetch(GAS_API + `?action=startShift&operator=${op}&shiftName=現場班`);
+    alert("開班作業已完成"); fetchShift();
+}
+
+async function handleCloseShift() {
+    if(!confirm("確認要進行結單/交班嗎？")) return;
+    await fetch(GAS_API + "?action=closeShift");
+    alert("已完成結單"); fetchShift();
+}
+
+async function fetchShift() {
+    const res = await fetch(GAS_API + "?action=getCurrentShift");
+    currentShift = await res.json();
+    document.getElementById("shiftStatus").innerText = currentShift.active ? `🟢 班次: ${currentShift.shiftName} (${currentShift.operator})` : "🔴 尚未開班";
+}
 
 setInterval(fetchOrders, 10000);
-setInterval(fetchShift, 30000);
-renderComboUI(); renderSingleUI(); fetchShift();
+renderComboUI();
+renderSingleUI();
+fetchShift();
 </script>
 </body>
 </html>
