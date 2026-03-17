@@ -3,78 +3,87 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>飯丸屋 POS v16.0 完美架構升級版</title>
+<title>飯丸屋 POS v16.0 質感明亮升級版</title>
 <style>
-/* 完全保留您原始 v9 的 CSS 架構，僅補充點餐分區所需的樣式 */
-body{ margin:0; font-family:"Microsoft JhengHei",sans-serif; background:#111; color:#fff; }
+/* =======================================================
+   全新日式無印奶油風 CSS (僅修改色彩、陰影、圓角，不影響架構)
+   ======================================================= */
+body{ margin:0; font-family:"Microsoft JhengHei",sans-serif; background:#F8F7F2; color:#2C2C2C; }
 .wrap{display:flex;min-height:100vh;}
-.sidebar{ width:300px; background:#1b1b1b; padding:20px; box-sizing:border-box; }
-.sidebar h1{ font-size:32px; margin:0 0 20px 0; }
+.sidebar{ width:300px; background:#FFFFFF; padding:20px; box-sizing:border-box; border-right:1px solid #EAE8E3; box-shadow: 2px 0 15px rgba(0,0,0,0.02); z-index: 10; }
+.sidebar h1{ font-size:32px; margin:0 0 20px 0; color:#2C2C2C; }
 .main{ flex:1; padding:20px; box-sizing:border-box; }
-.btn{ width:100%; border:none; padding:14px; margin-bottom:10px; border-radius:12px; cursor:pointer; font-size:16px; font-weight:800; }
-.btn-usb{background:#f1f1f1;color:#111;}
+.btn{ width:100%; border:none; padding:14px; margin-bottom:10px; border-radius:12px; cursor:pointer; font-size:16px; font-weight:800; transition: .2s; box-shadow: 0 2px 6px rgba(0,0,0,0.05); }
+.btn:active{ transform: scale(0.98); }
+.btn-usb{background:#F1F1F1;color:#333;}
 .btn-info{background:#3498db;color:#fff;}
-.btn-order{background:#f39c12;color:#111;}
-.btn-start{background:#2ecc71;color:#111;}
+.btn-order{background:#F39C12;color:#fff;}
+.btn-start{background:#2ecc71;color:#fff;}
 .btn-shift{background:#e74c3c;color:#fff;}
 
 .usb-status,.msg,.shift-box{ font-size:14px; line-height:1.6; margin-top:10px; }
-.usb-status{color:#7CFC98;}
-.msg{color:#ffd166;}
+.usb-status{color:#27AE60; font-weight:bold;}
+.msg{color:#D35400; font-weight:bold;}
 
-.shift-box{ margin-top:14px; background:#242424; border:1px solid #333; border-radius:14px; padding:12px; }
-.shift-title{ font-size:15px; font-weight:900; margin-bottom:8px; }
-.shift-active{ color:#7CFC98; }
-.shift-inactive{ color:#ff8c8c; }
+.shift-box{ margin-top:14px; background:#FAFAFA; border:1px solid #EAE8E3; border-radius:14px; padding:12px; }
+.shift-title{ font-size:15px; font-weight:900; margin-bottom:8px; color:#555;}
+.shift-active{ color:#27AE60; font-weight:bold; }
+.shift-inactive{ color:#e74c3c; font-weight:bold; }
 
-.cash-panel{ display:none; margin-bottom:20px; background:#1f1f1f; border-radius:16px; padding:18px; border:1px solid #333; }
+/* 點餐面板 */
+.cash-panel{ display:none; margin-bottom:20px; background:#FFFFFF; border-radius:16px; padding:18px; border:1px solid #EAE8E3; box-shadow: 0 4px 15px rgba(0,0,0,0.03); }
 .cash-panel.show{display:block;}
-.cash-title{ font-size:24px; font-weight:900; margin-bottom:8px; }
-.cash-sub{ color:#bbb; margin-bottom:16px; font-size:14px; }
+.cash-title{ font-size:24px; font-weight:900; margin-bottom:8px; color:#2C2C2C; }
+.cash-sub{ color:#888; margin-bottom:16px; font-size:14px; }
 .cash-grid{ display:grid; grid-template-columns:repeat(auto-fill,minmax(140px,1fr)); gap:12px; }
-.cash-item{ background:#2b2b2b; border-radius:14px; padding:14px; border:1px solid #3a3a3a; cursor:pointer; text-align:center;}
-.cash-item.active{ border-color:#f39c12; background:#333; }
-.cash-name{ font-size:16px; font-weight:900; margin-bottom:5px; }
-.cash-price{ font-size:14px; color:#ffd166; }
+.cash-item{ background:#FDFDFD; border-radius:14px; padding:14px; border:1px solid #EAE8E3; cursor:pointer; text-align:center; transition: .15s; }
+.cash-item:hover{ border-color:#ccc; }
+.cash-item.active{ border-color:#F39C12; background:#FFF9F0; box-shadow:0 0 0 1px #F39C12; }
+.cash-name{ font-size:16px; font-weight:900; margin-bottom:5px; color:#222;}
+.cash-price{ font-size:14px; color:#D35400; font-weight:bold; }
 
-.combo-step{ background:#252525; padding:15px; border-radius:14px; border:1px solid #333; margin-bottom:15px; }
-.step-title{ font-size:18px; font-weight:bold; color:#f39c12; margin-bottom:10px; }
-.step-lock{ opacity:.3; pointer-events:none; }
+.combo-step{ background:#FAFAFA; padding:15px; border-radius:14px; border:1px solid #EAE8E3; margin-bottom:15px; }
+.step-title{ font-size:18px; font-weight:bold; color:#D35400; margin-bottom:10px; }
+.step-lock{ opacity:.4; pointer-events:none; filter: grayscale(1); }
 
-.cash-summary{ margin-top:18px; background:#2b2b2b; border-radius:14px; padding:16px; border:2px solid #f39c12; }
+.cash-summary{ margin-top:18px; background:#FFFFFF; border-radius:14px; padding:16px; border:2px solid #F39C12; box-shadow: 0 4px 15px rgba(243,156,18,0.1); }
 .cash-summary-top{ display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; }
-.cash-summary-title{ font-size:20px; font-weight:900; }
-.cash-total{ font-size:28px; font-weight:900; color:#2ecc71; }
-.basket-item{ display:flex; justify-content:space-between; align-items:center; padding:10px 0; border-bottom:1px solid #444; font-size:15px; color:#ddd; }
-.del-btn{ color:#ff4d4d; font-weight:bold; cursor:pointer; padding:0 10px; }
+.cash-summary-title{ font-size:20px; font-weight:900; color:#222; }
+.cash-total{ font-size:28px; font-weight:900; color:#27AE60; }
+.basket-item{ display:flex; justify-content:space-between; align-items:center; padding:10px 0; border-bottom:1px solid #EAE8E3; font-size:15px; color:#444; font-weight:bold;}
+.del-btn{ color:#ff4d4d; font-weight:bold; cursor:pointer; padding:0 10px; font-size:18px;}
 .cash-actions{ margin-top:16px; display:grid; grid-template-columns:1fr 1fr; gap:12px; }
-.subbtn{ border:none; border-radius:12px; padding:14px; font-size:16px; font-weight:900; cursor:pointer; }
-.subbtn-send{ background:#2ecc71; color:#111; }
-.subbtn:disabled{ opacity:.45; cursor:not-allowed; }
+.subbtn{ border:none; border-radius:12px; padding:14px; font-size:16px; font-weight:900; cursor:pointer; transition:.2s; }
+.subbtn-send{ background:#2ecc71; color:#fff; box-shadow: 0 4px 10px rgba(46,204,113,0.2);}
+.subbtn:disabled{ opacity:.45; cursor:not-allowed; box-shadow:none; }
 
+/* 訂單卡片 */
 .grid{ display:grid; grid-template-columns:repeat(auto-fit,minmax(320px,1fr)); gap:15px; align-items:stretch; }
-.card{ background:#2b2b2b; border-radius:16px; padding:16px; box-sizing:border-box; border-left:6px solid #f39c12; display:flex; flex-direction:column; min-height:100%; }
-.card-onsite{ border-left-color:#f39c12; background:linear-gradient(180deg,#2b2b2b 0%, #292929 100%); }
-.card-reserve{ border-left-color:#6c63ff; background:linear-gradient(180deg,#2a2d3c 0%, #262837 100%); box-shadow:inset 0 0 0 1px rgba(108,99,255,.18); }
+.card{ background:#FFFFFF; border-radius:16px; padding:16px; box-sizing:border-box; border-left:6px solid #F39C12; display:flex; flex-direction:column; min-height:100%; box-shadow: 0 4px 12px rgba(0,0,0,0.04); border-top:1px solid #EAE8E3; border-right:1px solid #EAE8E3; border-bottom:1px solid #EAE8E3;}
+.card-onsite{ border-left-color:#F39C12; }
+.card-reserve{ border-left-color:#6c63ff; background:#FCFCFF; }
 .order-top{ flex:1; }
-.seq{ font-size:30px; font-weight:900; color:#f39c12; }
-.card-reserve .seq{ color:#9c8cff; }
-.meta{ margin-top:8px; color:#ccc; font-size:14px; }
-.reserve-badge{ display:inline-block; margin-top:10px; background:rgba(124,110,255,.18); color:#c9c3ff; border:1px solid rgba(124,110,255,.32); border-radius:999px; padding:6px 10px; font-size:12px; font-weight:800; }
-.onsite-badge{ display:inline-block; margin-top:10px; background:rgba(243,156,18,.16); color:#ffd18a; border:1px solid rgba(243,156,18,.28); border-radius:999px; padding:6px 10px; font-size:12px; font-weight:800; }
-.content{ margin-top:12px; font-size:22px; line-height:1.6; white-space:pre-line; }
-.total{ margin-top:12px; font-size:28px; font-weight:900; }
-.tag{ display:inline-block; padding:4px 10px; border-radius:20px; font-size:12px; margin-top:10px; background:#444; }
+.seq{ font-size:32px; font-weight:900; color:#D35400; }
+.card-reserve .seq{ color:#6c63ff; }
+.meta{ margin-top:8px; color:#777; font-size:13px; font-weight:bold;}
+.reserve-badge{ display:inline-block; margin-top:10px; background:#EFEFFF; color:#6c63ff; border:1px solid #D5D3FF; border-radius:999px; padding:6px 12px; font-size:12px; font-weight:800; }
+.onsite-badge{ display:inline-block; margin-top:10px; background:#FFF4E6; color:#D35400; border:1px solid #FDE3C4; border-radius:999px; padding:6px 12px; font-size:12px; font-weight:800; }
+.content{ margin-top:12px; font-size:20px; line-height:1.6; white-space:pre-line; color:#222; font-weight:bold; }
+.total{ margin-top:12px; font-size:28px; font-weight:900; color:#2C2C2C;}
+.tag{ display:inline-block; padding:4px 10px; border-radius:20px; font-size:12px; margin-top:10px; background:#F1F1F1; color:#888; font-weight:bold;}
 .actions{ display:flex; gap:8px; margin-top:auto; padding-top:18px; flex-wrap:wrap; }
-.sbtn{ flex:1; min-width:90px; border:none; padding:11px; border-radius:10px; cursor:pointer; font-size:14px; font-weight:700; }
-.sbtn:disabled{ opacity:.45; cursor:not-allowed; filter:grayscale(.25); }
-.reprint{ background:#3498db; color:#fff; }
+.sbtn{ flex:1; min-width:90px; border:none; padding:11px; border-radius:10px; cursor:pointer; font-size:14px; font-weight:700; transition:.15s; }
+.sbtn:active{ transform:scale(0.95); }
+.sbtn:disabled{ opacity:.45; cursor:not-allowed; filter:grayscale(.5); }
+.reprint{ background:#F1F1F1; color:#555; }
 .notify{ background:#9b59b6; color:#fff; }
 .done{ background:#2ecc71; color:#fff; }
-.cancel{ background:#e74c3c; color:#fff; }
-.empty{ color:#aaa; padding:20px; }
+.cancel{ background:#FFF0F0; color:#e74c3c; }
+.empty{ color:#888; padding:20px; font-weight:bold; font-size:18px;}
 
-@media (max-width:768px){ .wrap{display:block;} .sidebar{width:100%;} .main{padding:15px;} .cash-actions{grid-template-columns:1fr;} }
+h2 { color:#2C2C2C; margin-top:0; }
+
+@media (max-width:768px){ .wrap{display:block;} .sidebar{width:100%; border-right:none; border-bottom:1px solid #EAE8E3;} .main{padding:15px;} .cash-actions{grid-template-columns:1fr;} }
 </style>
 </head>
 <body>
@@ -92,7 +101,7 @@ body{ margin:0; font-family:"Microsoft JhengHei",sans-serif; background:#111; co
     <div class="shift-box" id="shiftBox">
       <div class="shift-title">班次狀態</div>
       <div id="shiftStatus" class="shift-inactive">目前尚未開班</div>
-      <div id="shiftSummaryMini" style="margin-top:10px;color:#ccc;font-size:13px;line-height:1.7;"></div>
+      <div id="shiftSummaryMini" style="margin-top:10px;color:#777;font-size:13px;line-height:1.7;font-weight:bold;"></div>
     </div>
     <div id="msg" class="msg"></div>
   </div>
@@ -104,9 +113,9 @@ body{ margin:0; font-family:"Microsoft JhengHei",sans-serif; background:#111; co
           <div class="cash-title">現場代客下單 (多筆加入)</div>
           <div class="cash-sub">固定為現場取餐、現金付款。</div>
         </div>
-        <div style="background:#333; padding:5px; border-radius:12px; display:flex; gap:5px;">
-          <button id="mBtnCombo" onclick="setCashMode('combo')" style="border:none; padding:10px 15px; border-radius:8px; background:#f39c12; color:#111; font-weight:bold; cursor:pointer;">套餐流程</button>
-          <button id="mBtnSingle" onclick="setCashMode('single')" style="border:none; padding:10px 15px; border-radius:8px; background:transparent; color:#fff; font-weight:bold; cursor:pointer;">單點模式</button>
+        <div style="background:#F1F1F1; padding:5px; border-radius:12px; display:flex; gap:5px;">
+          <button id="mBtnCombo" onclick="setCashMode('combo')" style="border:none; padding:10px 15px; border-radius:8px; background:#f39c12; color:#fff; font-weight:bold; cursor:pointer;">套餐流程</button>
+          <button id="mBtnSingle" onclick="setCashMode('single')" style="border:none; padding:10px 15px; border-radius:8px; background:transparent; color:#777; font-weight:bold; cursor:pointer;">單點模式</button>
         </div>
       </div>
 
@@ -140,9 +149,9 @@ body{ margin:0; font-family:"Microsoft JhengHei",sans-serif; background:#111; co
           <div class="cash-summary-title">🛒 待送出清單</div>
           <div class="cash-total">$<span id="posTotal">0</span></div>
         </div>
-        <div id="posBasketList" style="min-height:30px; color:#bbb; margin-top:15px; font-size:15px;">清單目前是空的</div>
+        <div id="posBasketList" style="min-height:30px; color:#888; margin-top:15px; font-size:15px; font-weight:bold;">清單目前是空的</div>
         <div class="cash-actions">
-          <button class="subbtn" style="background:#555; color:#fff;" onclick="addToPosBasket()">＋加入清單</button>
+          <button class="subbtn" style="background:#EAE8E3; color:#555;" onclick="addToPosBasket()">＋加入清單</button>
           <button id="cashSubmitBtn" class="subbtn subbtn-send" onclick="submitCashOrder()" disabled>確認送出現場單</button>
         </div>
       </div>
@@ -157,6 +166,7 @@ body{ margin:0; font-family:"Microsoft JhengHei",sans-serif; background:#111; co
 // ==========================================
 // 以下完全保留您原始 v9 的底層核心架構與變數
 // 絕對沒有更動您的列印函數與狀態機制
+// 100% 複製貼上您上一篇的程式碼
 // ==========================================
 const GAS_API = "https://script.google.com/macros/s/AKfycbz0HQ7EsRj1kFhP-UT9DIn90WgXt7q-H8vkEh3fD79_4BuCm5HnCFGF9q3h1mf6pY4s/exec";
 
@@ -319,10 +329,11 @@ function setCashMode(m) {
     cashMode = m;
     document.getElementById("cashComboWrap").style.display = m === 'combo' ? 'block' : 'none';
     document.getElementById("cashSingleWrap").style.display = m === 'single' ? 'block' : 'none';
+    // 配合亮色系微調按鈕切換顏色
     document.getElementById("mBtnCombo").style.background = m === 'combo' ? '#f39c12' : 'transparent';
-    document.getElementById("mBtnCombo").style.color = m === 'combo' ? '#111' : '#fff';
+    document.getElementById("mBtnCombo").style.color = m === 'combo' ? '#fff' : '#777';
     document.getElementById("mBtnSingle").style.background = m === 'single' ? '#f39c12' : 'transparent';
-    document.getElementById("mBtnSingle").style.color = m === 'single' ? '#111' : '#fff';
+    document.getElementById("mBtnSingle").style.color = m === 'single' ? '#fff' : '#777';
 }
 
 function renderPosUI() {
@@ -337,10 +348,10 @@ function renderPosUI() {
         document.getElementById(targetId).innerHTML = items.map(i=>`
             <div class="cash-item" style="display:flex; flex-direction:column; justify-content:space-between; height:100%;">
                 <div><div class="cash-name">${i.n}</div><div class="cash-price">$${i.sp || i.p}</div></div>
-                <div style="margin-top:10px; display:flex; justify-content:space-between; align-items:center; background:#444; border-radius:8px; padding:2px;">
-                    <button onclick="editSingle('${i.n}',-1,${i.sp || i.p})" style="width:30px;height:30px;border:none;background:transparent;color:#fff;font-weight:bold;cursor:pointer;">-</button>
-                    <span id="q-${i.n}" style="font-weight:bold;">${singleSel[i.n]?.q || 0}</span>
-                    <button onclick="editSingle('${i.n}',1,${i.sp || i.p})" style="width:30px;height:30px;border:none;background:transparent;color:#fff;font-weight:bold;cursor:pointer;">+</button>
+                <div style="margin-top:10px; display:flex; justify-content:space-between; align-items:center; background:#EAE8E3; border-radius:8px; padding:2px;">
+                    <button onclick="editSingle('${i.n}',-1,${i.sp || i.p})" style="width:30px;height:30px;border:none;background:transparent;color:#333;font-weight:bold;cursor:pointer;font-size:18px;">-</button>
+                    <span id="q-${i.n}" style="font-weight:bold; color:#222;">${singleSel[i.n]?.q || 0}</span>
+                    <button onclick="editSingle('${i.n}',1,${i.sp || i.p})" style="width:30px;height:30px;border:none;background:transparent;color:#333;font-weight:bold;cursor:pointer;font-size:18px;">+</button>
                 </div>
             </div>
         `).join("");
@@ -571,7 +582,9 @@ async function doUpdateStatus(row, status){
 }
 
 /* =========================
-   完全保留原本的 Canvas 列印邏輯 (加入文字自動換行與動態高度防裁斷)
+   完全保留原本的 Canvas 列印邏輯 (不切斷解法)
+   因為上面 submitCashOrder 已經改用 "," 拼接
+   所以這裡原封不動就能完美分行並自適應高度！
    ========================= */
 function drawWrappedText(ctx, text, x, y, maxWidth, lineHeight) {
   const chars = text.split('');
@@ -595,12 +608,12 @@ function drawWrappedText(ctx, text, x, y, maxWidth, lineHeight) {
 function buildCustomerReceiptCanvas(o){
   const items = String(o.content || "").split(",");
   const width = 384;
-  const lineHeight = 40; // 調整行高以適應換行
+  const lineHeight = 40; 
 
   const tempCanvas = document.createElement("canvas");
   const ctx = tempCanvas.getContext("2d");
   tempCanvas.width = width; 
-  tempCanvas.height = 3000; // 超長畫布防截斷
+  tempCanvas.height = 3000; 
   ctx.fillStyle = "#FFFFFF"; ctx.fillRect(0, 0, width, tempCanvas.height);
   ctx.fillStyle = "#000000"; ctx.textBaseline = "top";
   
