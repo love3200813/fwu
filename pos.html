@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>飯丸屋 POS v9 班次制</title>
+<title>飯丸屋 POS v10 套餐流程版</title>
 <style>
 body{
   margin:0;
@@ -89,6 +89,31 @@ body{
   margin-bottom:16px;
   font-size:14px;
 }
+
+.combo-step{
+  margin-bottom:18px;
+  background:#252525;
+  border:1px solid #333;
+  border-radius:16px;
+  padding:16px;
+}
+.combo-step-head{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  gap:10px;
+  flex-wrap:wrap;
+  margin-bottom:12px;
+}
+.combo-step-title{
+  font-size:20px;
+  font-weight:900;
+}
+.combo-step-sub{
+  font-size:13px;
+  color:#bbb;
+}
+
 .cash-grid{
   display:grid;
   grid-template-columns:repeat(auto-fit,minmax(220px,1fr));
@@ -99,6 +124,21 @@ body{
   border-radius:14px;
   padding:14px;
   border:1px solid #3a3a3a;
+  cursor:pointer;
+  transition:.15s;
+}
+.cash-item:hover{
+  transform:translateY(-2px);
+  border-color:#555;
+}
+.cash-item.active{
+  border-color:#f39c12;
+  box-shadow:0 0 0 1px rgba(243,156,18,.28) inset;
+}
+.cash-item.disabled{
+  opacity:.45;
+  pointer-events:none;
+  filter:grayscale(.25);
 }
 .cash-name{
   font-size:18px;
@@ -117,34 +157,71 @@ body{
   font-weight:900;
   color:#ffd166;
 }
-.cash-qty-wrap{
-  margin-top:14px;
-  display:flex;
-  justify-content:space-between;
-  align-items:center;
+.cash-mini{
+  margin-top:8px;
+  color:#aaa;
+  font-size:12px;
+  line-height:1.6;
+}
+.cash-addon-list{
+  display:grid;
+  grid-template-columns:repeat(auto-fit,minmax(180px,1fr));
   gap:10px;
 }
-.cash-qty-box{
-  display:flex;
-  align-items:center;
-  gap:10px;
+.addon-item{
+  background:#2b2b2b;
+  border:1px solid #3a3a3a;
+  border-radius:12px;
+  padding:12px;
+  cursor:pointer;
+  font-weight:800;
 }
-.qty-btn{
-  width:38px;
-  height:38px;
-  border:none;
-  border-radius:10px;
-  background:#444;
+.addon-item.active{
+  border-color:#2ecc71;
+  box-shadow:0 0 0 1px rgba(46,204,113,.25) inset;
+}
+.step-lock{
+  opacity:.48;
+  pointer-events:none;
+}
+.step-chip{
+  display:inline-block;
+  background:#3a3a3a;
   color:#fff;
-  font-size:22px;
+  border-radius:999px;
+  padding:6px 10px;
+  font-size:12px;
+  font-weight:900;
+}
+.step-chip.ok{
+  background:#2ecc71;
+  color:#111;
+}
+.step-chip.wait{
+  background:#f39c12;
+  color:#111;
+}
+.mode-switch{
+  display:flex;
+  gap:10px;
+  margin-bottom:16px;
+  flex-wrap:wrap;
+}
+.mode-btn{
+  flex:1;
+  min-width:180px;
+  border:none;
+  border-radius:12px;
+  padding:14px;
+  font-size:15px;
   font-weight:900;
   cursor:pointer;
+  background:#333;
+  color:#fff;
 }
-.qty-num{
-  min-width:26px;
-  text-align:center;
-  font-size:18px;
-  font-weight:900;
+.mode-btn.active{
+  background:#f39c12;
+  color:#111;
 }
 .cash-summary{
   margin-top:18px;
@@ -221,6 +298,11 @@ body{
   display:flex;
   flex-direction:column;
   min-height:100%;
+  transition:opacity .18s ease, transform .18s ease;
+}
+.card.removing{
+  opacity:0;
+  transform:scale(.98);
 }
 .card-onsite{
   border-left-color:#f39c12;
@@ -342,10 +424,10 @@ body{
     <div id="usbStatus" class="usb-status">尚未連線</div>
 
     <div class="shift-box" id="shiftBox">
-  <div class="shift-title">班次狀態</div>
-  <div id="shiftStatus" class="shift-inactive">目前尚未開班</div>
-  <div id="shiftSummaryMini" style="margin-top:10px;color:#ccc;font-size:13px;line-height:1.7;"></div>
-</div>
+      <div class="shift-title">班次狀態</div>
+      <div id="shiftStatus" class="shift-inactive">目前尚未開班</div>
+      <div id="shiftSummaryMini" style="margin-top:10px;color:#ccc;font-size:13px;line-height:1.7;"></div>
+    </div>
 
     <div id="msg" class="msg"></div>
   </div>
@@ -355,7 +437,60 @@ body{
       <div class="cash-title">現場代客下單</div>
       <div class="cash-sub">固定為現場取餐、現金付款。送出後會直接進待列印，並綁定目前班次。</div>
 
-      <div id="cashMenu" class="cash-grid"></div>
+      <div class="mode-switch">
+        <button id="modeComboBtn" class="mode-btn active" onclick="setCashMode('combo')">套餐流程</button>
+        <button id="modeSingleBtn" class="mode-btn" onclick="setCashMode('single')">舊版單點</button>
+      </div>
+
+      <div id="comboModeWrap">
+        <div class="combo-step">
+          <div class="combo-step-head">
+            <div>
+              <div class="combo-step-title">步驟 1：選主餐</div>
+              <div class="combo-step-sub">先選飯糰 / 蝦蝦飯主餐</div>
+            </div>
+            <span id="comboStep1Chip" class="step-chip wait">進行中</span>
+          </div>
+          <div id="comboMainGrid" class="cash-grid"></div>
+        </div>
+
+        <div id="comboAddonStep" class="combo-step step-lock">
+          <div class="combo-step-head">
+            <div>
+              <div class="combo-step-title">主餐加料</div>
+              <div class="combo-step-sub">可複選，不加也可以</div>
+            </div>
+            <span id="comboAddonChip" class="step-chip">未選</span>
+          </div>
+          <div id="comboAddonGrid" class="cash-addon-list"></div>
+        </div>
+
+        <div id="comboDrinkStep" class="combo-step step-lock">
+          <div class="combo-step-head">
+            <div>
+              <div class="combo-step-title">步驟 2：選飲料</div>
+              <div class="combo-step-sub">基本飲料免費，加價飲料自動計算</div>
+            </div>
+            <span id="comboStep2Chip" class="step-chip">未開始</span>
+          </div>
+          <div id="comboDrinkGrid" class="cash-grid"></div>
+        </div>
+
+        <div id="comboSideStep" class="combo-step step-lock">
+          <div class="combo-step-head">
+            <div>
+              <div class="combo-step-title">步驟 3：選副餐</div>
+              <div class="combo-step-sub">基本副餐免費，加價副餐自動計算</div>
+            </div>
+            <span id="comboStep3Chip" class="step-chip">未開始</span>
+          </div>
+          <div id="comboSideGrid" class="cash-grid"></div>
+        </div>
+      </div>
+
+      <div id="singleModeWrap" style="display:none;">
+        <div id="cashMenu" class="cash-grid"></div>
+      </div>
 
       <div class="cash-summary">
         <div class="cash-summary-top">
@@ -383,6 +518,9 @@ body{
 <script>
 const GAS_API = "https://script.google.com/macros/s/AKfycbz0HQ7EsRj1kFhP-UT9DIn90WgXt7q-H8vkEh3fD79_4BuCm5HnCFGF9q3h1mf6pY4s/exec";
 
+/* =========================
+   舊版單點
+   ========================= */
 const cashMenuItems = [
   { n:"招牌午餐肉", p:65, d:"經典熱銷，鹹香順口" },
   { n:"炸蝦塔塔", p:95, d:"炸蝦搭配塔塔醬，口感豐富" },
@@ -394,6 +532,55 @@ const cashMenuItems = [
   { n:"宇治抹茶", p:55, d:"微苦回甘，搭餐剛好" }
 ];
 
+/* =========================
+   套餐流程資料
+   ========================= */
+const COMBO_MAINS = [
+  { code:"A", n:"沖繩經典", comboPrice:107, singlePrice:63, d:"超值套餐｜經典口味" },
+  { code:"B", n:"炙燒明太子", comboPrice:117, singlePrice:73, d:"超值套餐｜人氣款" },
+  { code:"C", n:"雙層起司", comboPrice:123, singlePrice:79, d:"超值套餐｜濃郁起司" },
+  { code:"D", n:"松露炒菇", comboPrice:133, singlePrice:89, d:"超值套餐｜香氣濃厚" },
+  { code:"E", n:"煙燻雞肉", comboPrice:133, singlePrice:89, d:"超值套餐｜鹹香耐吃" },
+  { code:"F", n:"日式炸雞", comboPrice:137, singlePrice:93, d:"超值套餐｜熱銷款" },
+  { code:"G", n:"咖哩可樂餅", comboPrice:137, singlePrice:93, d:"超值套餐｜咖哩香" },
+  { code:"H", n:"明太子干貝酥", comboPrice:137, singlePrice:93, d:"超值套餐｜海味系" },
+  { code:"I", n:"炸蝦天婦羅", comboPrice:147, singlePrice:103, d:"超值套餐｜炸蝦款" },
+  { code:"J", n:"炸魚塔塔醬", comboPrice:147, singlePrice:103, d:"超值套餐｜塔塔系" },
+  { code:"K", n:"泡菜燒肉", comboPrice:147, singlePrice:103, d:"超值套餐｜重口味" },
+  { code:"L", n:"卡拉雞花生醬/海苔醬", comboPrice:153, singlePrice:109, d:"超值套餐｜厚醬系" },
+  { code:"M", n:"日式豬排塔塔醬", comboPrice:157, singlePrice:113, d:"超值套餐｜豬排系" },
+  { code:"O", n:"蒜味蝦蝦飯", comboPrice:213, singlePrice:169, d:"蝦蝦飯超值套餐" },
+  { code:"P", n:"奶油蝦蝦飯", comboPrice:223, singlePrice:179, d:"蝦蝦飯超值套餐" }
+];
+
+const COMBO_DRINKS = [
+  { code:"1", n:"原味紅茶", extra:0, d:"基本飲料" },
+  { code:"2", n:"無糖豆漿", extra:0, d:"基本飲料" },
+  { code:"3", n:"黑糖豆漿", extra:0, d:"基本飲料" },
+  { code:"4", n:"紅茶豆漿", extra:0, d:"基本飲料" },
+  { code:"5", n:"蜂蜜檸檬", extra:0, d:"基本飲料" },
+  { code:"6", n:"黑芝麻豆漿", extra:5, d:"補差額 +5" },
+  { code:"7", n:"日式奶茶", extra:5, d:"補差額 +5" }
+];
+
+const COMBO_SIDES = [
+  { code:"1", n:"咖哩可樂餅", extra:0, d:"基本副餐" },
+  { code:"2", n:"海苔醬薯條", extra:0, d:"基本副餐" },
+  { code:"3", n:"蜂蜜芥末薯條", extra:0, d:"基本副餐" },
+  { code:"4", n:"酥炸菇", extra:0, d:"基本副餐" },
+  { code:"5", n:"酥炸蝦頭", extra:0, d:"基本副餐" },
+  { code:"6", n:"洋蔥圈", extra:6, d:"補差額 +6" },
+  { code:"7", n:"黃金雞塊", extra:6, d:"補差額 +6" },
+  { code:"8", n:"蜂蜜芥末日式炸雞", extra:16, d:"補差額 +16" },
+  { code:"9", n:"炸魚薯條塔塔醬", extra:26, d:"補差額 +26" }
+];
+
+const COMBO_ADDONS = [
+  { code:"cheese", n:"加起司", price:10 },
+  { code:"tamago", n:"加玉子燒", price:15 },
+  { code:"shrimp", n:"加炸蝦", price:35 }
+];
+
 let printerDevice = null;
 let endpointOut = null;
 let printedOrders = new Set();
@@ -401,6 +588,14 @@ let printingOrders = new Set();
 let cashCart = {};
 let currentShift = null;
 let isFetchingOrders = false;
+let cashMode = "combo";
+
+let comboState = {
+  main:null,
+  drink:null,
+  side:null,
+  addons:[]
+};
 
 function setMsg(text){
   document.getElementById("msg").innerText = text || "";
@@ -655,9 +850,9 @@ async function handleCloseShift(){
       return;
     }
 
-    // 交班完成後清空前端狀態
     printedOrders = new Set();
     cashCart = {};
+    resetComboState();
     renderCashMenu();
     updateCashSummary();
 
@@ -673,7 +868,179 @@ async function handleCloseShift(){
 }
 
 /* =========================
-   現場代客下單
+   現場代客下單 - 模式切換
+   ========================= */
+
+function setCashMode(mode){
+  cashMode = mode;
+  document.getElementById("modeComboBtn").classList.toggle("active", mode === "combo");
+  document.getElementById("modeSingleBtn").classList.toggle("active", mode === "single");
+  document.getElementById("comboModeWrap").style.display = mode === "combo" ? "" : "none";
+  document.getElementById("singleModeWrap").style.display = mode === "single" ? "" : "none";
+  updateCashSummary();
+}
+
+/* =========================
+   套餐流程
+   ========================= */
+
+function resetComboState(){
+  comboState = {
+    main:null,
+    drink:null,
+    side:null,
+    addons:[]
+  };
+  renderComboFlow();
+}
+
+function renderComboFlow(){
+  renderComboMainGrid();
+  renderComboAddonGrid();
+  renderComboDrinkGrid();
+  renderComboSideGrid();
+  renderComboStepLocks();
+  updateCashSummary();
+}
+
+function renderComboMainGrid(){
+  const div = document.getElementById("comboMainGrid");
+  div.innerHTML = COMBO_MAINS.map(item => `
+    <div class="cash-item ${comboState.main && comboState.main.code === item.code ? "active" : ""}" onclick="selectComboMain('${item.code}')">
+      <div class="cash-name">${item.code} ${item.n}</div>
+      <div class="cash-desc">${item.d}</div>
+      <div class="cash-price">$${item.comboPrice}</div>
+      <div class="cash-mini">單點 $${item.singlePrice}｜套餐價 $${item.comboPrice}</div>
+    </div>
+  `).join("");
+}
+
+function renderComboAddonGrid(){
+  const div = document.getElementById("comboAddonGrid");
+  div.innerHTML = COMBO_ADDONS.map(item => `
+    <div class="addon-item ${comboState.addons.some(x => x.code === item.code) ? "active" : ""}" onclick="toggleComboAddon('${item.code}')">
+      ${item.n} +$${item.price}
+    </div>
+  `).join("");
+}
+
+function renderComboDrinkGrid(){
+  const div = document.getElementById("comboDrinkGrid");
+  div.innerHTML = COMBO_DRINKS.map(item => `
+    <div class="cash-item ${comboState.drink && comboState.drink.code === item.code ? "active" : ""}" onclick="selectComboDrink('${item.code}')">
+      <div class="cash-name">${item.n}</div>
+      <div class="cash-desc">${item.d}</div>
+      <div class="cash-price">${item.extra > 0 ? `+$${item.extra}` : "$0"}</div>
+    </div>
+  `).join("");
+}
+
+function renderComboSideGrid(){
+  const div = document.getElementById("comboSideGrid");
+  div.innerHTML = COMBO_SIDES.map(item => `
+    <div class="cash-item ${comboState.side && comboState.side.code === item.code ? "active" : ""}" onclick="selectComboSide('${item.code}')">
+      <div class="cash-name">${item.n}</div>
+      <div class="cash-desc">${item.d}</div>
+      <div class="cash-price">${item.extra > 0 ? `+$${item.extra}` : "$0"}</div>
+    </div>
+  `).join("");
+}
+
+function renderComboStepLocks(){
+  const addonStep = document.getElementById("comboAddonStep");
+  const drinkStep = document.getElementById("comboDrinkStep");
+  const sideStep = document.getElementById("comboSideStep");
+
+  addonStep.classList.toggle("step-lock", !comboState.main);
+  drinkStep.classList.toggle("step-lock", !comboState.main);
+  sideStep.classList.toggle("step-lock", !comboState.drink);
+
+  document.getElementById("comboStep1Chip").className = "step-chip " + (comboState.main ? "ok" : "wait");
+  document.getElementById("comboStep1Chip").innerText = comboState.main ? "已選主餐" : "進行中";
+
+  document.getElementById("comboAddonChip").className = "step-chip " + (comboState.addons.length ? "ok" : "");
+  document.getElementById("comboAddonChip").innerText = comboState.addons.length ? `已選 ${comboState.addons.length} 項` : "未選";
+
+  document.getElementById("comboStep2Chip").className = "step-chip " + (comboState.drink ? "ok" : (comboState.main ? "wait" : ""));
+  document.getElementById("comboStep2Chip").innerText = comboState.drink ? "已選飲料" : (comboState.main ? "請選飲料" : "未開始");
+
+  document.getElementById("comboStep3Chip").className = "step-chip " + (comboState.side ? "ok" : (comboState.drink ? "wait" : ""));
+  document.getElementById("comboStep3Chip").innerText = comboState.side ? "已選副餐" : (comboState.drink ? "請選副餐" : "未開始");
+}
+
+function selectComboMain(code){
+  const item = COMBO_MAINS.find(x => x.code === code);
+  if(!item) return;
+
+  comboState.main = item;
+  comboState.drink = null;
+  comboState.side = null;
+  comboState.addons = [];
+  renderComboFlow();
+}
+
+function selectComboDrink(code){
+  if(!comboState.main) return;
+  const item = COMBO_DRINKS.find(x => x.code === code);
+  if(!item) return;
+
+  comboState.drink = item;
+  renderComboFlow();
+}
+
+function selectComboSide(code){
+  if(!comboState.drink) return;
+  const item = COMBO_SIDES.find(x => x.code === code);
+  if(!item) return;
+
+  comboState.side = item;
+  renderComboFlow();
+}
+
+function toggleComboAddon(code){
+  if(!comboState.main) return;
+  const item = COMBO_ADDONS.find(x => x.code === code);
+  if(!item) return;
+
+  const idx = comboState.addons.findIndex(x => x.code === code);
+  if(idx >= 0){
+    comboState.addons.splice(idx, 1);
+  }else{
+    comboState.addons.push(item);
+  }
+  renderComboFlow();
+}
+
+function getComboTotal(){
+  if(!comboState.main) return 0;
+
+  const main = comboState.main.comboPrice || 0;
+  const drink = comboState.drink ? comboState.drink.extra : 0;
+  const side = comboState.side ? comboState.side.extra : 0;
+  const addon = comboState.addons.reduce((sum, x) => sum + (x.price || 0), 0);
+
+  return main + drink + side + addon;
+}
+
+function buildComboItemsText(){
+  if(!comboState.main || !comboState.drink || !comboState.side) return "";
+
+  const lines = [];
+  lines.push(`套餐主餐：${comboState.main.n}`);
+  lines.push(`套餐飲料：${comboState.drink.n}${comboState.drink.extra ? `(+${comboState.drink.extra})` : ""}`);
+  lines.push(`套餐副餐：${comboState.side.n}${comboState.side.extra ? `(+${comboState.side.extra})` : ""}`);
+
+  if(comboState.addons.length){
+    comboState.addons.forEach(a => {
+      lines.push(`主餐加料：${a.n}(+${a.price})`);
+    });
+  }
+
+  return lines.join(",");
+}
+
+/* =========================
+   舊版單點
    ========================= */
 
 function renderCashMenu(){
@@ -683,12 +1050,13 @@ function renderCashMenu(){
       <div class="cash-name">${item.n}</div>
       <div class="cash-desc">${item.d}</div>
       <div class="cash-price">$${item.p}</div>
-      <div class="cash-qty-wrap">
+      <div class="cash-mini">舊版單點模式</div>
+      <div style="margin-top:14px;display:flex;justify-content:space-between;align-items:center;gap:10px;">
         <div>數量</div>
-        <div class="cash-qty-box">
-          <button class="qty-btn" onclick="editCashCart('${item.n}', -1)">−</button>
-          <div class="qty-num">${cashCart[item.n] || 0}</div>
-          <button class="qty-btn" onclick="editCashCart('${item.n}', 1)">＋</button>
+        <div style="display:flex;align-items:center;gap:10px;">
+          <button style="width:38px;height:38px;border:none;border-radius:10px;background:#444;color:#fff;font-size:22px;font-weight:900;cursor:pointer;" onclick="editCashCart('${item.n}', -1)">−</button>
+          <div style="min-width:26px;text-align:center;font-size:18px;font-weight:900;">${cashCart[item.n] || 0}</div>
+          <button style="width:38px;height:38px;border:none;border-radius:10px;background:#444;color:#fff;font-size:22px;font-weight:900;cursor:pointer;" onclick="editCashCart('${item.n}', 1)">＋</button>
         </div>
       </div>
     </div>
@@ -702,7 +1070,7 @@ function editCashCart(name, delta){
   updateCashSummary();
 }
 
-function getCashTotal(){
+function getCashTotalSingle(){
   let total = 0;
   for(const k in cashCart){
     const item = cashMenuItems.find(x => x.n === k);
@@ -711,7 +1079,7 @@ function getCashTotal(){
   return total;
 }
 
-function getCashCount(){
+function getCashCountSingle(){
   let count = 0;
   for(const k in cashCart){
     count += cashCart[k];
@@ -719,13 +1087,54 @@ function getCashCount(){
   return count;
 }
 
+/* =========================
+   統一摘要
+   ========================= */
+
 function updateCashSummary(){
-  const total = getCashTotal();
-  const count = getCashCount();
   const listDiv = document.getElementById("cashList");
   const subDiv = document.getElementById("cashSummarySub");
   const submitBtn = document.getElementById("cashSubmitBtn");
 
+  if(cashMode === "combo"){
+    const total = getComboTotal();
+    document.getElementById("cashTotal").innerText = total;
+
+    if(!comboState.main){
+      subDiv.innerText = "尚未選擇套餐主餐";
+      listDiv.innerText = "";
+      submitBtn.disabled = true;
+      return;
+    }
+
+    const lines = [];
+    lines.push(`主餐：${comboState.main.n} $${comboState.main.comboPrice}`);
+
+    if(comboState.addons.length){
+      comboState.addons.forEach(a => {
+        lines.push(`加料：${a.n} +$${a.price}`);
+      });
+    }else{
+      lines.push("加料：無");
+    }
+
+    lines.push(`飲料：${comboState.drink ? comboState.drink.n + (comboState.drink.extra ? ` +$${comboState.drink.extra}` : "") : "未選擇"}`);
+    lines.push(`副餐：${comboState.side ? comboState.side.n + (comboState.side.extra ? ` +$${comboState.side.extra}` : "") : "未選擇"}`);
+
+    listDiv.innerText = lines.join("\n");
+
+    if(comboState.main && comboState.drink && comboState.side){
+      subDiv.innerText = "套餐已完成，固定為現場取餐 / 現金付款";
+      submitBtn.disabled = false;
+    }else{
+      subDiv.innerText = "請完成主餐、飲料、副餐選擇";
+      submitBtn.disabled = true;
+    }
+    return;
+  }
+
+  const total = getCashTotalSingle();
+  const count = getCashCountSingle();
   document.getElementById("cashTotal").innerText = total;
 
   if(count === 0){
@@ -745,29 +1154,49 @@ function updateCashSummary(){
 
 function clearCashCart(){
   cashCart = {};
+  resetComboState();
   renderCashMenu();
   updateCashSummary();
 }
 
 async function submitCashOrder(){
-  if(Object.keys(cashCart).length === 0){
-    alert("請先選擇餐點");
-    return;
+  let orderData = null;
+
+  if(cashMode === "combo"){
+    if(!comboState.main || !comboState.drink || !comboState.side){
+      alert("請完成套餐主餐、飲料、副餐選擇");
+      return;
+    }
+
+    orderData = {
+      items: buildComboItemsText(),
+      total: getComboTotal(),
+      pickupTime: "現場取餐",
+      payMethod: "現金",
+      customerName: "",
+      customerPhone: "",
+      customerLineUserId: ""
+    };
+  }else{
+    if(Object.keys(cashCart).length === 0){
+      alert("請先選擇餐點");
+      return;
+    }
+
+    orderData = {
+      items: Object.keys(cashCart).map(k => `${k}x${cashCart[k]}`).join(","),
+      total: getCashTotalSingle(),
+      pickupTime: "現場取餐",
+      payMethod: "現金",
+      customerName: "",
+      customerPhone: "",
+      customerLineUserId: ""
+    };
   }
 
   const btn = document.getElementById("cashSubmitBtn");
   btn.disabled = true;
   btn.innerText = "送單中...";
-
-  const orderData = {
-    items: Object.keys(cashCart).map(k => `${k}x${cashCart[k]}`).join(","),
-    total: getCashTotal(),
-    pickupTime: "現場取餐",
-    payMethod: "現金",
-    customerName: "",
-    customerPhone: "",
-    customerLineUserId: ""
-  };
 
   try{
     const url = new URL(GAS_API);
@@ -889,7 +1318,7 @@ function renderOrders(list){
     }
 
     return `
-      <div class="card ${isReserve ? "card-reserve" : "card-onsite"}">
+      <div class="card ${isReserve ? "card-reserve" : "card-onsite"}" id="order-card-${o.row}">
         <div class="order-top">
           <div class="seq">${o.seq || ""}</div>
           <div class="meta">狀態：${o.status || ""} ｜ 付款：${o.pay || ""}</div>
@@ -906,9 +1335,9 @@ function renderOrders(list){
 
         <div class="actions">
           <button class="sbtn reprint" ${disableReprint ? "disabled" : ""} onclick='manualPrint(${JSON.stringify(encodeURIComponent(JSON.stringify(o)))})'>補印</button>
-          <button class="sbtn notify" ${disableNotify ? "disabled" : ""} onclick="setStatus(${o.row}, '可取餐')">通知取餐</button>
-          <button class="sbtn done" ${disableDone ? "disabled" : ""} onclick="setStatus(${o.row}, '已完成')">完成</button>
-          <button class="sbtn cancel" ${disableCancel ? "disabled" : ""} onclick="setStatus(${o.row}, '已作廢')">作廢</button>
+          <button class="sbtn notify" ${disableNotify ? "disabled" : ""} onclick="setStatus(${o.row}, '可取餐', this)">通知取餐</button>
+          <button class="sbtn done" ${disableDone ? "disabled" : ""} onclick="fastDone(${o.row}, this)">完成</button>
+          <button class="sbtn cancel" ${disableCancel ? "disabled" : ""} onclick="setStatus(${o.row}, '已作廢', this)">作廢</button>
         </div>
       </div>
     `;
@@ -966,11 +1395,59 @@ async function manualPrint(encoded){
   }
 }
 
-async function setStatus(row, status){
+async function fastDone(row, btn){
+  const card = btn.closest(".card");
+  if(!card) return;
+
+  const parent = card.parentNode;
+  const next = card.nextSibling;
+
+  btn.disabled = true;
+  card.classList.add("removing");
+
+  setTimeout(() => {
+    if(card.parentNode){
+      card.parentNode.removeChild(card);
+    }
+  }, 160);
+
   try{
+    const data = await doUpdateStatus(row, "已完成");
+    if(data && data.success === false){
+      throw new Error(data.message || "此筆訂單目前不可操作");
+    }
+
+    setMsg("訂單已完成");
+    fetchCurrentShift();
+    setTimeout(() => fetchOrders(true), 1200);
+
+  }catch(err){
+    if(!card.parentNode){
+      if(next){
+        parent.insertBefore(card, next);
+      }else{
+        parent.appendChild(card);
+      }
+    }
+    card.classList.remove("removing");
+    btn.disabled = false;
+    alert("操作失敗：" + err.message);
+  }
+}
+
+async function setStatus(row, status, btn){
+  try{
+    if(status === "已完成"){
+      await fastDone(row, btn);
+      return;
+    }
+
+    if(btn) btn.disabled = true;
+
     const data = await doUpdateStatus(row, status);
     if(data && data.success === false){
       alert(data.message || "此筆訂單目前不可操作");
+      if(btn) btn.disabled = false;
       return;
     }
 
@@ -980,7 +1457,9 @@ async function setStatus(row, status){
     }
 
     await fetchOrders(true);
+    await fetchCurrentShift();
   }catch(err){
+    if(btn) btn.disabled = false;
     alert("操作失敗：" + err.message);
   }
 }
@@ -1302,7 +1781,8 @@ async function printCanvasToPrinter(canvas, finalHeight){
 }
 
 renderCashMenu();
-updateCashSummary();
+resetComboState();
+setCashMode("combo");
 fetchCurrentShift();
 setInterval(fetchOrders, 3000);
 setInterval(fetchCurrentShift, 10000);
