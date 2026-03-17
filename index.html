@@ -457,8 +457,10 @@ async function submitOrder() {
       location.href = json.payUrl;
     } else if(json.status === "success") {
       document.getElementById("orderPage").style.display='none';
+      document.getElementById("orderPage").classList.remove("active");
       document.getElementById("successPage").style.display='block';
-      document.getElementById("successDetail").innerHTML = `取餐號：<b>${json.seq}</b><br>訂單ID：${json.orderId}`;
+      document.getElementById("successPage").classList.add("active");
+      document.getElementById("successDetail").innerHTML = `取餐號：<b style="font-size:32px; color:var(--danger);">${json.seq}</b><br><span style="font-size:14px; color:#666;">訂單ID：${json.orderId}</span>`;
     }
   } catch(e) { alert("系統錯誤，請稍後再試"); btn.disabled=false; }
 }
@@ -475,12 +477,48 @@ async function queryOrder() {
     const json = await res.json();
     if(!json) resDiv.innerHTML = "查無訂單";
     else resDiv.innerHTML = `<div style="padding:10px; background:#f0f0f0; border-radius:10px;">
-      狀態：${json.status}<br>取餐號：${json.seqId}<br>內容：${json.items}</div>`;
+      狀態：${json.status}<br>取餐號：<b style="font-size:24px; color:var(--danger);">${json.seqId}</b><br>內容：${json.items}</div>`;
   } catch(e) { resDiv.innerHTML = "查詢失敗"; }
 }
 
+/* --- LINE Pay 付款後跳轉攔截 (新增機制) --- */
+async function checkLinePayReturn() {
+  const urlParams = new URLSearchParams(window.location.search);
+  const status = urlParams.get('status');
+  const orderId = urlParams.get('orderId');
+
+  if (status === 'success' && orderId) {
+    // 切換到成功頁面
+    document.getElementById("orderPage").style.display = 'none';
+    document.getElementById("orderPage").classList.remove("active");
+    document.getElementById("successPage").style.display = 'block';
+    document.getElementById("successPage").classList.add("active");
+    
+    document.getElementById("successDetail").innerHTML = "正在查詢您的取餐號，請稍候...";
+
+    try {
+      // 拿 Order ID 去後台換取餐號
+      const res = await fetch(GAS_API + "?action=checkMyOrder&id=" + orderId);
+      const json = await res.json();
+      
+      if (json && json.seqId) {
+        document.getElementById("successDetail").innerHTML = `LINE Pay 付款成功！<br>您的取餐號為：<br><b style="font-size:36px; color:var(--danger);">${json.seqId}</b><br><span style="font-size:14px; color:#666;">訂單ID：${orderId}</span>`;
+        
+        // 為了美觀與防呆，清空網址列上的 ?status=success 參數，避免客人重新整理又跑一次
+        window.history.replaceState(null, null, window.location.pathname);
+      } else {
+        document.getElementById("successDetail").innerHTML = `付款成功！<br>取餐號查詢延遲，請向現場人員出示訂單ID：<br><b style="font-size:18px;">${orderId}</b>`;
+      }
+    } catch (e) {
+      document.getElementById("successDetail").innerHTML = `付款成功！<br>系統忙碌中，請向現場人員出示訂單ID：<br><b style="font-size:18px;">${orderId}</b>`;
+    }
+  }
+}
+
+// 頁面載入時初始化
 renderComboUI();
 renderSingleUI();
+checkLinePayReturn(); // 檢查是否為 LINE Pay 跳轉回來
 </script>
 </body>
 </html>
