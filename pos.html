@@ -3,9 +3,9 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>飯丸屋 POS v12.0 完整分類版</title>
+<title>飯丸屋 POS v12.5 完整分類點餐與動態列印版</title>
 <style>
-/* --- 基礎風格 --- */
+/* --- 風格定義 --- */
 body{ margin:0; font-family:"Microsoft JhengHei",sans-serif; background:#111; color:#fff; overflow:hidden;}
 .wrap{ display:flex; height:100vh; }
 .sidebar{ width:300px; background:#1b1b1b; padding:20px; box-sizing:border-box; border-right:1px solid #333; display:flex; flex-direction:column; }
@@ -17,17 +17,15 @@ body{ margin:0; font-family:"Microsoft JhengHei",sans-serif; background:#111; co
 .btn-order{ background:#f39c12; color:#111; }
 .btn-start{ background:#2ecc71; color:#111; }
 .btn-shift{ background:#e74c3c; color:#fff; }
-.btn:active{ transform: scale(0.98); }
+.btn:disabled{ opacity: 0.4; cursor: not-allowed; }
 
-/* --- 點餐面板區域 --- */
+/* --- 點餐面板 --- */
 .cash-panel{ display:none; background:#1f1f1f; border-radius:16px; padding:20px; border:1px solid #333; margin-bottom:20px; }
 .cash-panel.show{ display:block; }
 .section-title { font-size:18px; font-weight:bold; color:#f39c12; margin:15px 0 10px; border-left:4px solid #f39c12; padding-left:10px; }
 
-/* --- 網格與卡片 --- */
 .cash-grid{ display:grid; grid-template-columns:repeat(auto-fill, minmax(140px, 1fr)); gap:10px; }
 .cash-item{ background:#2b2b2b; border-radius:12px; padding:12px; border:1px solid #3a3a3a; cursor:pointer; text-align:center; }
-.cash-item:hover{ border-color:#888; }
 .cash-item.active{ border-color:#f39c12; background:#333; box-shadow:0 0 8px rgba(243,156,18,0.3); }
 .cash-item b{ display:block; font-size:16px; margin-bottom:4px; }
 .cash-item span{ font-size:13px; color:#aaa; }
@@ -41,7 +39,7 @@ body{ margin:0; font-family:"Microsoft JhengHei",sans-serif; background:#111; co
 
 /* --- 訂單列表 --- */
 .order-grid{ display:grid; grid-template-columns:repeat(auto-fill, minmax(320px, 1fr)); gap:15px; }
-.order-card{ background:#1b1b1b; border-radius:16px; padding:16px; border-left:6px solid #f39c12; position:relative; }
+.order-card{ background:#1b1b1b; border-radius:16px; padding:16px; border-left:6px solid #f39c12; }
 .order-seq{ font-size:32px; font-weight:900; color:#f39c12; }
 .order-content{ font-size:18px; line-height:1.6; color:#ffd166; margin:10px 0; white-space:pre-wrap; }
 </style>
@@ -63,7 +61,6 @@ body{ margin:0; font-family:"Microsoft JhengHei",sans-serif; background:#111; co
   </div>
 
   <div class="main">
-    
     <div id="cashPanel" class="cash-panel">
       <div style="display:flex; justify-content:space-between; align-items:center;">
         <h2 style="margin:0; color:#f39c12;">現場代客點餐</h2>
@@ -74,48 +71,45 @@ body{ margin:0; font-family:"Microsoft JhengHei",sans-serif; background:#111; co
       </div>
 
       <div id="cashComboWrap">
-        <div class="section-title">步驟 1：選擇主餐 (A-P)</div>
+        <div class="section-title">步驟 1：選擇主餐</div>
         <div id="posMainGrid" class="cash-grid"></div>
-
         <div id="posAddonStep" class="step-lock">
-            <div class="section-title">主餐加料 (可多選)</div>
+            <div class="section-title">主餐加料</div>
             <div id="posAddonGrid" class="cash-grid"></div>
         </div>
-
         <div id="posDrinkStep" class="step-lock">
-            <div class="section-title">步驟 2：選擇套餐飲品</div>
+            <div class="section-title">步驟 2：選擇飲品</div>
             <div id="posDrinkGrid" class="cash-grid"></div>
         </div>
-
         <div id="posSideStep" class="step-lock">
-            <div class="section-title">步驟 3：選擇套餐副餐</div>
+            <div class="section-title">步驟 3：選擇副餐</div>
             <div id="posSideGrid" class="cash-grid"></div>
         </div>
       </div>
 
       <div id="cashSingleWrap" style="display:none;">
-        <div class="section-title">飯糰/蝦蝦飯單點</div>
-        <div id="posSingleMainGrid" class="cash-grid"></div>
+        <div class="section-title">主食單點</div>
+        <div id="posSMainGrid" class="cash-grid"></div>
         <div class="section-title">飲品單點</div>
-        <div id="posSingleDrinkGrid" class="cash-grid"></div>
+        <div id="posSDrinkGrid" class="cash-grid"></div>
         <div class="section-title">副餐單點</div>
-        <div id="posSingleSideGrid" class="cash-grid"></div>
+        <div id="posSSideGrid" class="cash-grid"></div>
       </div>
 
       <div class="basket-box">
         <div style="font-weight:bold; margin-bottom:10px; display:flex; justify-content:space-between;">
-            <span>🛒 待送出清單</span>
+            <span>🛒 點餐清單 (多筆)</span>
             <span style="color:#2ecc71;">總額: $<span id="posTotal">0</span></span>
         </div>
-        <div id="posBasketList" style="min-height:30px; color:#999; font-size:14px;">清單目前是空的</div>
+        <div id="posBasketList" style="min-height:30px; color:#999; font-size:14px;">尚未加入項目</div>
         <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px; margin-top:15px;">
-          <button class="btn" style="background:#555; color:#fff;" onclick="addToPosBasket()">＋加入項目</button>
-          <button id="posSubmitBtn" class="btn btn-order" onclick="submitPosOrder()" disabled>確認送出 (現金取餐)</button>
+          <button class="btn" style="background:#555; color:#fff;" onclick="addToPosBasket()">＋加入清單</button>
+          <button id="posSubmitBtn" class="btn btn-order" onclick="submitPosOrder()" disabled>確認送出</button>
         </div>
       </div>
     </div>
 
-    <h2>即時訂單狀態</h2>
+    <h2>即時訂單列表</h2>
     <div id="orders" class="order-grid"></div>
   </div>
 </div>
@@ -135,11 +129,10 @@ const DRINKS = [{n:"原味紅茶",e:0,p:30},{n:"無糖豆漿",e:0,p:35},{n:"黑�
 const SIDES = [{n:"咖哩可樂餅",e:0,p:35},{n:"海苔薯條",e:0,p:43},{n:"蜂蜜芥末薯條",e:0,p:43},{n:"酥炸菇",e:0,p:43},{n:"酥炸蝦頭",e:0,p:43},{n:"洋蔥圈",e:6,p:49},{n:"黃金雞塊",e:6,p:49},{n:"日式炸雞",e:16,p:59},{n:"炸魚薯條",e:26,p:69}];
 const ADDONS = [{n:"換素餐肉",p:10},{n:"加起司",p:10},{n:"加玉子燒",p:15},{n:"加炸蝦",p:35}];
 
-/* 狀態管理 */
 let posBasket = [];
 let cashMode = "combo";
 let curSel = { main: null, drink: null, side: null, addons: [] };
-let singleSel = {}; // 品項名: 數量
+let singleSel = {}; 
 let printerDevice = null, endpointOut = null, currentShift = null;
 
 function toggleCashPanel() { document.getElementById("cashPanel").classList.toggle("show"); }
@@ -152,7 +145,7 @@ function setCashMode(m) {
     document.getElementById("mBtnSingle").style.background = m==='single'?'#f39c12':'#444';
 }
 
-/* 渲染點餐介面 */
+/* 套餐渲染 */
 function renderComboUI() {
     document.getElementById("posMainGrid").innerHTML = MAINS.map(m=>`
         <div class="cash-item ${curSel.main?.code===m.code?'active':''}" onclick="selMain('${m.code}')"><b>${m.code}.${m.n}</b><span>套餐 $${m.cp}</span></div>
@@ -170,8 +163,7 @@ function renderComboUI() {
 
 function selMain(c) {
     curSel.main = MAINS.find(x=>x.code===c);
-    document.getElementById("posAddonStep").classList.remove("step-lock");
-    document.getElementById("posDrinkStep").classList.remove("step-lock");
+    ["posAddonStep","posDrinkStep"].forEach(id=>document.getElementById(id).classList.remove("step-lock"));
     renderComboUI();
 }
 function toggleAddon(n) {
@@ -190,22 +182,23 @@ function selSide(n) {
     renderComboUI();
 }
 
+/* 單點渲染 */
 function renderSingleUI() {
     const renderItems = (items, targetId) => {
         document.getElementById(targetId).innerHTML = items.map(i=>`
             <div class="cash-item">
                 <b>${i.n}</b><span>$${i.p||i.sp}</span>
                 <div style="margin-top:8px; display:flex; justify-content:space-between; align-items:center;">
-                    <button onclick="changeSingleQty('${i.n}',-1,${i.p||i.sp})" style="padding:2px 8px;">-</button>
+                    <button onclick="changeSingleQty('${i.n}',-1,${i.p||i.sp})">-</button>
                     <span id="q-${i.n}" style="font-weight:bold;">${singleSel[i.n]?.q || 0}</span>
-                    <button onclick="changeSingleQty('${i.n}',1,${i.p||i.sp})" style="padding:2px 8px;">+</button>
+                    <button onclick="changeSingleQty('${i.n}',1,${i.p||i.sp})">+</button>
                 </div>
             </div>
         `).join("");
     };
-    renderItems(MAINS, "posSingleMainGrid");
-    renderItems(DRINKS, "posSingleDrinkGrid");
-    renderItems(SIDES, "posSingleSideGrid");
+    renderItems(MAINS, "posSMainGrid");
+    renderItems(DRINKS, "posSDrinkGrid");
+    renderItems(SIDES, "posSSideGrid");
 }
 
 function changeSingleQty(n, d, p) {
@@ -215,10 +208,10 @@ function changeSingleQty(n, d, p) {
     document.getElementById(`q-${n}`).innerText = singleSel[n]?.q || 0;
 }
 
-/* 購物車處理 */
+/* 購物車邏輯 */
 function addToPosBasket() {
     if (cashMode === 'combo') {
-        if(!curSel.main || !curSel.drink || !curSel.side) return alert("套餐步驟未完成");
+        if(!curSel.main || !curSel.drink || !curSel.side) return alert("請完成套餐步驟選擇");
         const price = curSel.main.cp + curSel.drink.e + curSel.side.e + curSel.addons.reduce((s,a)=>s+a.p,0);
         const desc = `套餐:${curSel.main.n}(配:${curSel.drink.n}/${curSel.side.n}${curSel.addons.length?',加:'+curSel.addons.map(a=>a.n).join('|'):''})`;
         posBasket.push({ desc, price });
@@ -254,7 +247,7 @@ function renderBasketList() {
     document.getElementById("posSubmitBtn").disabled = !posBasket.length;
 }
 
-/* USB 與列印優化 (核心:多行換行) */
+/* USB 與動態高度列印 */
 async function connectUSB(){
     try {
         printerDevice = await navigator.usb.requestDevice({ filters:[] });
@@ -269,55 +262,74 @@ async function connectUSB(){
 
 async function printOrder(o) {
     if(!printerDevice || !endpointOut) return;
+    
+    // 1. 動態計算高度
+    const items = String(o.content || "").split(" | ");
+    const width = 384; 
+    const headerH = 220; 
+    const itemH = items.length * 40; 
+    const footerH = 160; 
+    const totalHeight = headerH + itemH + footerH;
+
     const canvas = document.createElement("canvas");
     const ctx = canvas.getContext("2d");
-    const width = 384; canvas.width = width; canvas.height = 1200;
-    ctx.fillStyle = "#fff"; ctx.fillRect(0,0,width,1200);
-    ctx.fillStyle = "#000"; ctx.textBaseline = "top";
+    canvas.width = width;
+    canvas.height = totalHeight;
+
+    ctx.fillStyle = "#fff"; 
+    ctx.fillRect(0, 0, width, totalHeight);
+    ctx.fillStyle = "#000"; 
+    ctx.textBaseline = "top";
     
     let y = 20;
-    ctx.font = "bold 38px Arial"; ctx.fillText("飯丸屋 - 現場單", 10, y); y += 50;
+    ctx.font = "bold 38px Arial"; ctx.fillText("飯丸屋 - 現場單", 10, y); y += 60;
     ctx.font = "bold 65px Arial"; ctx.fillText(o.seq, 10, y); y += 75;
     ctx.font = "24px Arial";
-    ctx.fillText("取餐：現場取餐", 10, y); y += 35;
-    ctx.fillText("付款：現金", 10, y); y += 35;
-    ctx.fillText("---------------------------", 10, y); y += 30;
+    ctx.fillText("取餐：現場取餐", 10, y); y += 40;
+    ctx.fillText("付款：現金", 10, y); y += 40;
+    ctx.fillText("---------------------------", 10, y); y += 35;
     
     ctx.font = "bold 26px Arial";
-    const items = String(o.content || "").split(" | ");
     items.forEach(line => {
         ctx.fillText("・" + line, 10, y);
-        y += 38;
+        y += 40;
     });
     
     ctx.fillText("---------------------------", 10, y); y += 40;
-    ctx.font = "bold 45px Arial"; ctx.fillText("總計 $" + o.total, 10, y); y += 60;
+    ctx.font = "bold 45px Arial"; 
+    ctx.fillText("總計 $" + o.total, 10, y); y += 65;
     
-    const finalCanvas = document.createElement("canvas");
-    finalCanvas.width = width; finalCanvas.height = y + 50;
-    finalCanvas.getContext("2d").drawImage(canvas, 0, 0);
-    await sendToPrinter(finalCanvas);
+    await sendToPrinter(canvas);
 }
 
 async function sendToPrinter(canvas) {
     const ctx = canvas.getContext("2d");
-    const imgData = ctx.getImageData(0,0,canvas.width,canvas.height).data;
+    const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
     const widthBytes = canvas.width / 8;
     const bitmap = new Uint8Array(widthBytes * canvas.height);
-    for(let i=0; i<imgData.length; i+=4) {
-        if((imgData[i]+imgData[i+1]+imgData[i+2])/3 < 128) {
-            const idx = i/4;
-            bitmap[Math.floor(idx/canvas.width) * widthBytes + Math.floor((idx%canvas.width)/8)] |= (1 << (7 - ((idx%canvas.width)%8)));
+    
+    for(let i = 0; i < imgData.length; i += 4) {
+        if((imgData[i] + imgData[i+1] + imgData[i+2]) / 3 < 128) {
+            const idx = i / 4;
+            const x = idx % canvas.width;
+            const y = Math.floor(idx / canvas.width);
+            bitmap[y * widthBytes + Math.floor(x / 8)] |= (1 << (7 - (x % 8)));
         }
     }
-    const header = new TextEncoder().encode(`SIZE 48 mm, ${Math.ceil(canvas.height/8)} mm\r\nGAP 0,0\r\nCLS\r\nBITMAP 0,0,${widthBytes},${canvas.height},0,`);
-    const footer = new TextEncoder().encode("\r\nPRINT 1,1\r\n");
+
+    const mmHeight = Math.ceil(canvas.height / 8); 
+    const header = new TextEncoder().encode(`SIZE 48 mm, ${mmHeight} mm\r\nGAP 0,0\r\nCLS\r\nBITMAP 0,0,${widthBytes},${canvas.height},0,`);
+    const footer = new TextEncoder().encode("\r\nPRINT 1,1\r\nFEED 20\r\n");
+
     const data = new Uint8Array(header.length + bitmap.length + footer.length);
-    data.set(header); data.set(bitmap, header.length); data.set(footer, header.length + bitmap.length);
+    data.set(header);
+    data.set(bitmap, header.length);
+    data.set(footer, header.length + bitmap.length);
+    
     await printerDevice.transferOut(endpointOut, data);
 }
 
-/* GAS 訂單互動 */
+/* 數據互動 */
 async function fetchOrders() {
     try {
         const res = await fetch(GAS_API + "?action=getOrders&t=" + Date.now());
@@ -348,14 +360,14 @@ async function updateStatus(row, status) {
 }
 
 async function submitPosOrder() {
-    if(!currentShift?.active) return alert("請先進行開班作業！");
+    if(!currentShift?.active) return alert("請先完成開班作業！");
     const btn = document.getElementById("posSubmitBtn");
     btn.disabled = true;
     const orderData = {
         items: posBasket.map(i=>i.desc).join(" | "),
         total: posBasket.reduce((s,i)=>s+i.price, 0),
         pickupTime: "現場取餐", payMethod: "現金",
-        customerName: "店員代點", customerPhone: ""
+        customerName: "現場代點", customerPhone: ""
     };
     await fetch(GAS_API + "?action=submitOrder&orderData=" + JSON.stringify(orderData));
     posBasket = []; renderBasketList(); fetchOrders();
@@ -364,16 +376,17 @@ async function submitPosOrder() {
 
 /* 班次作業 */
 async function handleStartShift() {
-    const op = prompt("請輸入開班人員姓名:"); if(!op) return;
+    const op = prompt("人員姓名?"); if(!op) return;
     const res = await fetch(GAS_API + `?action=startShift&operator=${op}&shiftName=現場班`);
-    const data = await res.json();
-    alert("開班作業已完成"); fetchShift();
+    await fetchShift();
+    alert("開班作業完成");
 }
 
 async function handleCloseShift() {
-    if(!confirm("確認要進行結單/交班嗎？")) return;
-    const res = await fetch(GAS_API + "?action=closeShift");
-    alert("已完成結單"); fetchShift();
+    if(!confirm("確認交班嗎？")) return;
+    await fetch(GAS_API + "?action=closeShift");
+    await fetchShift();
+    alert("結單交班完成");
 }
 
 async function fetchShift() {
