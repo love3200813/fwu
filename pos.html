@@ -707,16 +707,40 @@ function buildKitchenReceiptCanvas(o){
 }
 
 function mergeReceiptCanvases(topReceipt, bottomReceipt){
-  const gap = 36, bottomPadding = 96;
-  const topHeight = Math.ceil(topReceipt.finalHeight), bottomHeight = Math.ceil(bottomReceipt.finalHeight);
+  // 1. 定義間距與底部緩衝 (緩衝給足 120px)
+  const gap = 60; 
+  const bottomPadding = 120; 
+  
+  // 2. 取得兩張單據的精確高度
+  const topH = Math.ceil(topReceipt.finalHeight);
+  const bottomH = Math.ceil(bottomReceipt.finalHeight);
+  
+  // 3. 建立總畫布
   const finalCanvas = document.createElement("canvas");
   const finalCtx = finalCanvas.getContext("2d");
-  finalCanvas.width = Math.max(topReceipt.canvas.width, bottomReceipt.canvas.width);
-  finalCanvas.height = topHeight + gap + bottomHeight + bottomPadding;
-  finalCtx.fillStyle = "#FFFFFF"; finalCtx.fillRect(0, 0, finalCanvas.width, finalCanvas.height);
-  finalCtx.drawImage(topReceipt.canvas, 0, 0, topReceipt.canvas.width, topHeight, 0, 0, topReceipt.canvas.width, topHeight);
-  finalCtx.fillStyle = "#000000"; finalCtx.fillRect(10, topHeight + Math.floor(gap / 2), finalCanvas.width - 20, 2);
-  finalCtx.drawImage(bottomReceipt.canvas, 0, 0, bottomReceipt.canvas.width, bottomHeight, 0, topHeight + gap, bottomReceipt.canvas.width, bottomHeight);
+  
+  finalCanvas.width = 384;
+  // 總高度 = 上篇高 + 間距 + 下篇高 + 緩衝
+  finalCanvas.height = topH + gap + bottomH + bottomPadding;
+  
+  // 4. 填滿白色背景 (避免透明背景導致列印黑塊)
+  finalCtx.fillStyle = "#FFFFFF"; 
+  finalCtx.fillRect(0, 0, finalCanvas.width, finalCanvas.height);
+  
+  // 5. 繪製「客人單」(座標 0, 0)
+  finalCtx.drawImage(topReceipt.canvas, 0, 0);
+  
+  // 6. 繪製中間撕線 (在兩張單據正中間)
+  finalCtx.fillStyle = "#000000"; 
+  const lineY = topH + Math.floor(gap / 2);
+  finalCtx.fillRect(10, lineY, finalCanvas.width - 20, 2);
+  
+  // 7. 【關鍵修正】繪製「廚房單」
+  // 座標必須是 topH + gap，確保接在客人單之後，且不重疊
+  finalCtx.drawImage(bottomReceipt.canvas, 0, topH + gap);
+  
+  console.log("合併完成 - 客人單高度:", topH, "廚房單高度:", bottomH, "總高度:", finalCanvas.height);
+  
   return finalCanvas;
 }
 
@@ -770,31 +794,16 @@ async function printShiftReceipt(data){
 
 async function printOrderLabel(o){
   if(!printerDevice || !endpointOut) throw new Error("請先建立 USB 連線");
+  
+  // 生成兩張原始畫布
   const customerReceipt = buildCustomerReceiptCanvas(o);
   const kitchenReceipt = buildKitchenReceiptCanvas(o);
+  
+  // 合併
   const finalCanvas = mergeReceiptCanvases(customerReceipt, kitchenReceipt);
+  
+  // 【重點】傳送合併後的畫布與它「完整的總高度」
   await printCanvasToPrinter(finalCanvas, finalCanvas.height);
-}
-
-async function printCanvasToPrinter(canvas, finalHeight){
-  const width = canvas.width; const height = Math.ceil(finalHeight);
-  const ctx = canvas.getContext("2d");
-  const img = ctx.getImageData(0, 0, width, height).data;
-  const widthBytes = 48; const bitmap = new Uint8Array(widthBytes * height);
-  bitmap.fill(255);
-  for(let py = 0; py < height; py++){
-    for(let px = 0; px < width; px++){
-      const idx = (py * width + px) * 4;
-      const gray = (img[idx] + img[idx+1] + img[idx+2]) / 3;
-      if(img[idx+3] > 128 && gray < 180) bitmap[py * widthBytes + Math.floor(px / 8)] &= ~(1 << (7 - (px % 8)));
-    }
-  }
-  const mmHeight = Math.max(60, Math.ceil(height / 8));
-  const header = new TextEncoder().encode(`SIZE 48 mm, ${mmHeight} mm\r\nGAP 2 mm, 0 mm\r\nCLS\r\nBITMAP 0,0,48,${height},0,`);
-  const footer = new TextEncoder().encode(`\r\nPRINT 1,1\r\nFEED 20 mm\r\n`);
-  const buf = new Uint8Array(header.length + bitmap.length + footer.length);
-  buf.set(header, 0); buf.set(bitmap, header.length); buf.set(footer, header.length + bitmap.length);
-  await printerDevice.transferOut(endpointOut, buf);
 }
 
 /* 初始化執行 (改由按鈕觸發) */
