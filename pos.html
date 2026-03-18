@@ -657,10 +657,13 @@ function buildCustomerReceiptCanvas(o){
   ctx.font = "bold 46px sans-serif"; ctx.fillText("總計 $" + String(o.total || 0), 10, y); y += 60;
   ctx.font = "24px sans-serif"; ctx.fillText("謝謝光臨，請依叫號取餐", 10, y); y += 36;
   
+  // 【加回你原本的空白秘方】96 大約是 1.2 公分，你想更長可以改成 150
+  const bottomPadding = 96; 
+  
   const finalCanvas = document.createElement("canvas");
-  finalCanvas.width = width; finalCanvas.height = y + 40;
-  finalCanvas.getContext("2d").drawImage(tempCanvas, 0, 0, width, y + 40, 0, 0, width, y + 40);
-  return { canvas: finalCanvas, finalHeight: y + 40 };
+  finalCanvas.width = width; finalCanvas.height = y + bottomPadding;
+  finalCanvas.getContext("2d").drawImage(tempCanvas, 0, 0, width, y + bottomPadding, 0, 0, width, y + bottomPadding);
+  return { canvas: finalCanvas, finalHeight: y + bottomPadding };
 }
    function buildKitchenReceiptCanvas(o){
   // 【修復關鍵】同時支援逗號(,)與直線(|)切割
@@ -691,17 +694,18 @@ function buildCustomerReceiptCanvas(o){
   }
   
   ctx.font = "24px monospace"; ctx.fillText("--------------------------", 10, y); y += 35;
-  ctx.font = "bold 30px sans-serif"; 
-  // 【修復關鍵】使用自動換行工具，讓超長備註會自動往下折行，不會超出右邊界
   y = drawWrappedText(ctx, "備註：" + String(o.pay || ""), 10, y, 360, 38); 
-  y += 30; // 底部留一點空白
+  y += 10; 
+
+  // 【加回你原本的空白秘方】
+  const bottomPadding = 96; 
   
   const finalCanvas = document.createElement("canvas");
-  finalCanvas.width = width; finalCanvas.height = y + 30;
-  finalCanvas.getContext("2d").drawImage(tempCanvas, 0, 0, width, y + 30, 0, 0, width, y + 30);
-  return { canvas: finalCanvas, finalHeight: y + 30 };
+  finalCanvas.width = width; finalCanvas.height = y + bottomPadding;
+  finalCanvas.getContext("2d").drawImage(tempCanvas, 0, 0, width, y + bottomPadding, 0, 0, width, y + bottomPadding);
+  return { canvas: finalCanvas, finalHeight: y + bottomPadding };
 }
-
+   
 function mergeReceiptCanvases(topReceipt, bottomReceipt){
   const gap = 36, bottomPadding = 96;
   const topHeight = Math.ceil(topReceipt.finalHeight), bottomHeight = Math.ceil(bottomReceipt.finalHeight);
