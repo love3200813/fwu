@@ -107,7 +107,7 @@ input, select { width:100%; border:1px solid var(--line); border-radius:14px; pa
       <div class="brand-title" style="font-size:22px;">🛒 我的購物車</div>
       <div style="font-size:24px; font-weight:900;">$<span id="inlineSummaryTotal">0</span></div>
     </div>
-    <div id="basketItemsList" style="margin-bottom:15px; color:#555;">尚未加入餐點</div>
+    <div id="basketItemsList" style="margin-bottom:15px; color:#555;">尚未加入餐點(選好餐點請先加入到購物車內)</div>
     <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
       <button class="btn btn-secondary" onclick="addToBasket()">＋加入購物車</button>
       <button id="goCheckoutBtn" class="btn btn-primary" onclick="showCheckout()" disabled>確認結帳</button>
@@ -359,7 +359,7 @@ function updateBasketUI() {
   const btn = document.getElementById("goCheckoutBtn");
 
   if(basket.length===0){
-    list.innerText = "尚未加入餐點";
+    list.innerText = "尚未加入餐點(選好餐點請先加入到購物車內)";
     totalTop.innerText = "0"; totalIn.innerText = "0"; btn.disabled = true;
     return;
   }
