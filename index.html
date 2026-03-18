@@ -62,8 +62,8 @@ input, select { width:100%; border:1px solid var(--line); border-radius:14px; pa
   </div>
 
   <div class="mode-switch">
-    <button id="modeComboBtn" class="mode-btn active" onclick="setOrderMode('combo')">套餐模式</button>
-    <button id="modeSingleBtn" class="mode-btn" onclick="setOrderMode('single')">單點模式</button>
+    <button id="modeComboBtn" class="mode-btn active" onclick="setOrderMode('combo')">套餐</button>
+    <button id="modeSingleBtn" class="mode-btn" onclick="setOrderMode('single')">單點</button>
   </div>
 
   <div id="comboModeWrap">
@@ -76,7 +76,7 @@ input, select { width:100%; border:1px solid var(--line); border-radius:14px; pa
     </div>
 
     <div id="addonStep" class="combo-step step-lock">
-      <div class="brand-title" style="font-size:20px; margin-bottom:10px;">主餐加料</div>
+      <div class="brand-title" style="font-size:20px; margin-bottom:10px;">主餐加料(選填)</div>
       <div id="addonGrid" class="grid" style="grid-template-columns:repeat(auto-fit,minmax(140px,1fr));"></div>
     </div>
 
@@ -382,7 +382,7 @@ function handlePickupModeChange() {
     payS.innerHTML = `<option value="LINEPAY">LINE Pay</option><option value="現金">現場付款</option>`;
   } else {
     resF.style.display='block';
-    payS.innerHTML = `<option value="LINEPAY">LINE Pay (預約僅限支付)</option>`;
+    payS.innerHTML = `<option value="LINEPAY">LINE Pay (預約單僅限線上支付)</option>`;
     initDateOptions();
   }
 }
@@ -534,7 +534,7 @@ async function checkLinePayReturn() {
       const json = await res.json();
       
       if (json && json.seqId) {
-        document.getElementById("successDetail").innerHTML = `LINE Pay 付款成功！<br>您的取餐號為：<br><b style="font-size:36px; color:var(--danger);">${json.seqId}</b><br><span style="font-size:14px; color:#666;">訂單ID：${orderId}</span>`;
+        document.getElementById("successDetail").innerHTML = `LINE Pay 付款成功！<br>您的取餐號為(建議請截圖)：<br><b style="font-size:36px; color:var(--danger);">${json.seqId}</b><br><span style="font-size:14px; color:#666;">訂單ID：${orderId}</span>`;
         window.history.replaceState(null, null, window.location.pathname);
       } else {
         document.getElementById("successDetail").innerHTML = `付款成功！<br>取餐號查詢延遲，請向現場人員出示訂單ID：<br><b style="font-size:18px;">${orderId}</b>`;
