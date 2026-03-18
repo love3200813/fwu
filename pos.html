@@ -87,7 +87,15 @@ h2 { color:#2C2C2C; margin-top:0; }
 </style>
 </head>
 <body>
-
+   
+<div id="startOverlay" style="position:fixed; inset:0; background:rgba(44, 44, 44, 0.95); z-index:9999; display:flex; flex-direction:column; align-items:center; justify-content:center; color:#fff;">
+  <h1 style="font-size:36px; margin-bottom:10px; color:#F39C12;">🍙 飯丸屋 POS 系統</h1>
+  <p style="font-size:18px; margin-bottom:30px; color:#ccc;">為確保能正常收到新訂單的「音效通知」，請點擊下方按鈕啟用系統</p>
+  <button onclick="initSystem()" style="padding:15px 40px; font-size:22px; font-weight:bold; background:#2ecc71; color:#fff; border:none; border-radius:12px; cursor:pointer; box-shadow: 0 4px 15px rgba(46,204,113,0.4); transition:.2s;">
+    🔊 點此啟用系統
+  </button>
+</div>
+   
 <div class="wrap">
   <div class="sidebar">
     <h1>🍙 飯丸屋 POS</h1>
@@ -786,12 +794,21 @@ async function printCanvasToPrinter(canvas, finalHeight){
   await printerDevice.transferOut(endpointOut, buf);
 }
 
-/* 初始化執行 */
-fetchMenuData(); // 改成先抓資料，抓完會自動幫您 renderPosUI
-fetchCurrentShift();
-setInterval(fetchOrders, 3000);
-setInterval(fetchCurrentShift, 10000);
-fetchOrders();
+/* 初始化執行 (改由按鈕觸發) */
+function initSystem() {
+  // 1. 先偷偷播一次極短的音效，藉此「解鎖」瀏覽器的音效限制
+  playBeep(); 
+  
+  // 2. 隱藏啟動遮罩，秀出 POS 主畫面
+  document.getElementById("startOverlay").style.display = "none";
+  
+  // 3. 開始抓取資料與設定定時器 (原本的初始化邏輯)
+  fetchMenuData(); 
+  fetchCurrentShift();
+  setInterval(fetchOrders, 3000);
+  setInterval(fetchCurrentShift, 10000);
+  fetchOrders();
+}
 </script>
 </body>
 </html>
