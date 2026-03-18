@@ -197,48 +197,37 @@ let COMBO_MAINS = [];
 let COMBO_DRINKS = [];
 let COMBO_SIDES = [];
 let COMBO_ADDONS = [];
-/* --- LINE LIFF 初始化與身分變數 --- */
-let customerLineId = ""; // 用來儲存客人的專屬 LINE ID
+let customerLineId = "";
 
 async function initializeLiff() {
   try {
-    await liff.init({ liffId: "2009519091-Khodkh2u" }); // 您的專屬 ID
+    await liff.init({ liffId: "2009519091-Khodkh2u" });
     if (liff.isLoggedIn()) {
       const profile = await liff.getProfile();
       customerLineId = profile.userId; 
     }
-  } catch (err) {
-    console.error("LIFF 初始化失敗:", err);
-  }
+  } catch (err) { console.error("LIFF 初始化失敗:", err); }
 }
-  
-// 新增抓取菜單功能
+
 async function fetchMenuData() {
   try {
     const res = await fetch(GAS_API + "?action=getMenu&t=" + Date.now());
     const menuData = await res.json();
-    
-    // 將 GAS 傳回的資料放進變數
     COMBO_MAINS = menuData.mains;
     COMBO_DRINKS = menuData.drinks;
     COMBO_SIDES = menuData.sides;
     COMBO_ADDONS = menuData.addons;
-
-    // 資料載入後才渲染畫面
     renderComboUI();
     renderSingleUI();
-  } catch(err) {
-    alert("菜單載入失敗，請稍後重試或通知店家：" + err.message);
-  }
+  } catch(err) { alert("菜單載入失敗：" + err.message); }
 }
-  
+
 /* --- 狀態變數 --- */
 let basket = [];
 let orderMode = "combo";
 let curCombo = { main: null, drink: null, side: null, addons: [] };
 let singleSelection = {}; 
 
-/* --- 基礎功能 --- */
 function showToast(m) {
   const t = document.getElementById("toast");
   t.innerText = m; t.style.display = "block";
@@ -252,48 +241,8 @@ function setOrderMode(m) {
   document.getElementById("comboModeWrap").style.display = m==='combo'?'block':'none';
   document.getElementById("singleModeWrap").style.display = m==='single'?'block':'none';
 }
-/* --- 點擊選餐控制邏輯 --- */
-function selectMain(c) {
-  curCombo.main = COMBO_MAINS.find(x=>x.code===c);
-  document.getElementById("addonStep").classList.remove("step-lock");
-  document.getElementById("drinkStep").classList.remove("step-lock");
-  document.getElementById("stepMainChip").innerText = "已選";
-  document.getElementById("stepMainChip").className = "step-chip ok";
-  renderComboUI();
-}
 
-function toggleAddon(n) {
-  const a = COMBO_ADDONS.find(x=>x.n===n);
-  const idx = curCombo.addons.findIndex(x=>x.n===n);
-  if(idx>-1) curCombo.addons.splice(idx,1); else curCombo.addons.push(a);
-  renderComboUI();
-}
-
-function selectDrink(n) {
-  curCombo.drink = COMBO_DRINKS.find(x=>x.n===n);
-  document.getElementById("sideStep").classList.remove("step-lock");
-  document.getElementById("stepDrinkChip").innerText = "已選";
-  document.getElementById("stepDrinkChip").className = "step-chip ok";
-  renderComboUI();
-}
-
-function selectSide(n) {
-  curCombo.side = COMBO_SIDES.find(x=>x.n===n);
-  document.getElementById("stepSideChip").innerText = "已選";
-  document.getElementById("stepSideChip").className = "step-chip ok";
-  renderComboUI();
-}
-
-function resetCombo() {
-  curCombo = { main: null, drink: null, side: null, addons: [] };
-  document.getElementById("stepMainChip").innerText="進行中"; document.getElementById("stepMainChip").className="step-chip";
-  document.getElementById("stepDrinkChip").innerText="未開始"; document.getElementById("stepDrinkChip").className="step-chip";
-  document.getElementById("stepSideChip").innerText="未開始"; document.getElementById("stepSideChip").className="step-chip";
-  ["addonStep","drinkStep","sideStep"].forEach(id => document.getElementById(id).classList.add("step-lock"));
-  renderComboUI();
-}
-  
-/* --- 優化版：套餐渲染與下拉選單邏輯 --- */
+/* --- 下拉選單版：套餐渲染邏輯 --- */
 function renderComboUI() {
   // 渲染主餐卡片
   document.getElementById("mainGrid").innerHTML = COMBO_MAINS.map(m => `
@@ -303,7 +252,7 @@ function renderComboUI() {
     </div>
   `).join("");
 
-  // 填充加料選單 (如果尚未填充過)
+  // 填充加料選單
   const addonSelect = document.getElementById("comboAddonSelect");
   addonSelect.innerHTML = '<option value="">(不加料)</option>' + 
     COMBO_ADDONS.map(a => `<option value="${a.n}">+ $${a.p} ${a.n}</option>`).join("");
@@ -319,18 +268,17 @@ function renderComboUI() {
     `<option value="${s.n}">${s.n} ${s.extra > 0 ? '(+ $'+s.extra+')' : '(內含)'}</option>`).join("");
 }
 
-// 修改主餐選擇邏輯
+// 點擊主餐
 function selectMain(c) {
   curCombo.main = COMBO_MAINS.find(x => x.code === c);
   document.getElementById("comboOptionsWrap").classList.remove("step-lock");
   document.getElementById("stepMainChip").innerText = "已選";
   document.getElementById("stepMainChip").className = "step-chip ok";
-  
-  renderComboUI(); // 刷新高亮
-  syncComboSelection(); // 同步一次價格與物件
+  renderComboUI(); // 更新卡片選中狀態
+  syncComboSelection(); // 同步一次選單數值與價格
 }
 
-// 同步下拉選單的值到 curCombo 物件，並計算即時價格
+// 同步下拉選單並計算「單份小計」
 function syncComboSelection() {
   if (!curCombo.main) return;
   
@@ -342,32 +290,29 @@ function syncComboSelection() {
   const drinkObj = COMBO_DRINKS.find(d => d.n === selectedDrinkN) || { n: "未知", extra: 0 };
   const sideObj = COMBO_SIDES.find(s => s.n === selectedSideN) || { n: "未知", extra: 0 };
 
-  // 更新全域變數 curCombo 供購物車使用
   curCombo.drink = drinkObj;
   curCombo.side = sideObj;
   curCombo.addons = selectedAddonN ? [addonObj] : [];
 
-  // 計算並顯示套餐小計
-  const addonP = addonObj.p;
-  const total = curCombo.main.comboPrice + drinkObj.extra + sideObj.extra + addonP;
+  const total = curCombo.main.comboPrice + drinkObj.extra + sideObj.extra + addonObj.p;
+  // 更新兩個地方的小計顯示
+  document.getElementById("currentComboPrice").innerText = total;
   document.getElementById("currentComboPriceDisplay").innerText = total;
 }
 
-// 修改原有的 resetCombo 確保 UI 重置
 function resetCombo() {
   curCombo = { main: null, drink: null, side: null, addons: [] };
   document.getElementById("stepMainChip").innerText = "請選擇";
   document.getElementById("stepMainChip").className = "step-chip";
   document.getElementById("comboOptionsWrap").classList.add("step-lock");
   document.getElementById("currentComboPrice").innerText = "0";
-  // 重置下拉選單到首項
+  document.getElementById("currentComboPriceDisplay").innerText = "0";
   document.getElementById("comboAddonSelect").selectedIndex = 0;
   document.getElementById("comboDrinkSelect").selectedIndex = 0;
   document.getElementById("comboSideSelect").selectedIndex = 0;
   renderComboUI();
 }
 
-/* --- 單點邏輯 (支援圖片) --- */
 function renderSingleUI() {
   const categories = [
     { name: "飯糰單點", list: COMBO_MAINS.map(m=>({n:m.n, p:m.singlePrice, img:m.img})) },
@@ -399,12 +344,17 @@ function changeSingle(n, d, p) {
   singleSelection[n].q += d;
   if(singleSelection[n].q <= 0) delete singleSelection[n];
   document.getElementById(`single-qty-${n}`).innerText = singleSelection[n]?.q || 0;
+  
+  // 單點模式下，即時更新「當前餐點小計」
+  let singleSum = 0;
+  Object.keys(singleSelection).forEach(k => { singleSum += singleSelection[k].q * singleSelection[k].p; });
+  document.getElementById("currentComboPriceDisplay").innerText = singleSum;
 }
 
-/* --- 購物車核心 --- */
+/* --- 購物車與底部結帳條更新 --- */
 function addToBasket() {
   if (orderMode === "combo") {
-    if(!curCombo.main || !curCombo.drink || !curCombo.side) return alert("請完成套餐步驟選擇！");
+    if(!curCombo.main) return alert("請先選擇主餐！");
     const addonP = curCombo.addons.reduce((s,a)=>s+a.p, 0);
     const total = curCombo.main.comboPrice + curCombo.drink.extra + curCombo.side.extra + addonP;
     const desc = `套餐:${curCombo.main.n}(配:${curCombo.drink.n}/${curCombo.side.n}${curCombo.addons.length?',加:'+curCombo.addons.map(a=>a.n).join('|'):''})`;
@@ -412,12 +362,13 @@ function addToBasket() {
     resetCombo();
   } else {
     const keys = Object.keys(singleSelection);
-    if(keys.length===0) return alert("請先選擇單點品項數量！");
+    if(keys.length===0) return alert("請先選擇品項！");
     keys.forEach(k => {
       basket.push({ desc: `單點:${k} x ${singleSelection[k].q}`, price: singleSelection[k].p * singleSelection[k].q });
     });
     singleSelection = {};
     renderSingleUI();
+    document.getElementById("currentComboPriceDisplay").innerText = "0";
   }
   showToast("已加入購物車");
   updateBasketUI();
@@ -425,15 +376,19 @@ function addToBasket() {
 
 function updateBasketUI() {
   const list = document.getElementById("basketItemsList");
+  const cartQty = document.getElementById("cartQty");
+  const cartTotalBottom = document.getElementById("cartTotalBottom");
+  const stickyBar = document.getElementById("stickyCheckoutBar");
+  const cartSection = document.getElementById("cartSection");
   const totalTop = document.getElementById("cartTotalTop");
-  const totalIn = document.getElementById("inlineSummaryTotal");
-  const btn = document.getElementById("goCheckoutBtn");
 
-  if(basket.length===0){
-    list.innerText = "尚未加入餐點(選好餐點請先加入到購物車內)";
-    totalTop.innerText = "0"; totalIn.innerText = "0"; btn.disabled = true;
+  if(basket.length === 0){
+    cartSection.style.display = "none";
+    stickyBar.style.display = "none";
+    totalTop.innerText = "0";
     return;
   }
+
   let sum = 0;
   list.innerHTML = basket.map((item, i) => {
     sum += item.price;
@@ -444,12 +399,17 @@ function updateBasketUI() {
       </div>
     `;
   }).join("");
-  totalTop.innerText = sum; totalIn.innerText = sum; btn.disabled = false;
+
+  cartQty.innerText = basket.length;
+  cartTotalBottom.innerText = sum;
+  totalTop.innerText = sum;
+  cartSection.style.display = "block";
+  stickyBar.style.display = "block";
 }
 
 function removeItem(i) { basket.splice(i,1); updateBasketUI(); }
 
-/* --- 結帳與時間邏輯 --- */
+/* --- 結帳與送單邏輯 (維持原樣) --- */
 function handlePickupModeChange() {
   const mode = document.getElementById("pickupMode").value;
   const payS = document.getElementById("payMethod");
@@ -481,11 +441,9 @@ function updatePickupTimeOptions() {
   const s = document.getElementById("pickupTime");
   const now = getTaipeiNow();
   const minT = new Date(now.getTime() + MIN_RESERVE_MINUTES*60000);
-  
   let options = [];
   let cur = new Date(dateStr + "T10:30:00");
   const end = new Date(dateStr + "T19:00:00");
-  
   while(cur <= end) {
     if(cur >= minT) options.push(pad(cur.getHours())+":"+pad(cur.getMinutes()));
     cur = new Date(cur.getTime() + 30*60000);
@@ -504,21 +462,14 @@ function showCheckout() {
 function hideCheckout() { document.getElementById("checkoutPanel").style.display = "none"; }
 
 async function submitOrder() {
-  
   const name = document.getElementById("customerName").value.trim();
   const phone = document.getElementById("customerPhone").value.trim();
-  const payMethod = document.getElementById("payMethod").value; // 先抓取付款方式
-
-  // 【關鍵修改】只有當付款方式是 LINEPAY 時，才強制要求填寫姓名與電話
-  if (payMethod === "LINEPAY" && (!name || !phone)) {
-    return alert("使用 LINE Pay 或預約取餐，請務必填寫聯絡姓名與電話！");
-  }
+  const payMethod = document.getElementById("payMethod").value;
+  if (payMethod === "LINEPAY" && (!name || !phone)) return alert("請填寫聯絡姓名與電話！");
 
   const btn = document.getElementById("submitBtn");
   btn.disabled = true; btn.innerText = "送出中...";
-
   const mode = document.getElementById("pickupMode").value;
-  
   let pickup = "現場取餐";
   if(mode==='reserve') {
     const t = document.getElementById("pickupTime").value;
@@ -530,10 +481,10 @@ async function submitOrder() {
     items: basket.map(i=>i.desc).join(" | "),
     total: basket.reduce((s,i)=>s+i.price, 0),
     pickupTime: pickup,
-    payMethod: document.getElementById("payMethod").value,
+    payMethod: payMethod,
     customerName: name, 
     customerPhone: phone,
-    lineUserId: customerLineId // <--- 【重點】加在這裡！
+    lineUserId: customerLineId
   };
 
   try {
@@ -543,97 +494,53 @@ async function submitOrder() {
       location.href = json.payUrl;
     } else if(json.status === "success") {
       document.getElementById("orderPage").style.display='none';
-      document.getElementById("orderPage").classList.remove("active");
       document.getElementById("successPage").style.display='block';
-      document.getElementById("successPage").classList.add("active");
-      document.getElementById("successDetail").innerHTML = `取餐號：<b style="font-size:32px; color:var(--danger);">${json.seq}</b><br><span style="font-size:14px; color:#666;">訂單ID：${json.orderId}</span>`;
+      document.getElementById("successDetail").innerHTML = `取餐號：<b style="font-size:32px; color:var(--danger);">${json.seq}</b><br>ID：${json.orderId}`;
     }
-  } catch(e) { alert("系統錯誤，請稍後再試"); btn.disabled=false; }
+  } catch(e) { alert("系統錯誤"); btn.disabled=false; }
 }
 
-/* --- 查詢功能 (加入補位防呆) --- */
 function openQueryModal() { document.getElementById("queryModal").classList.add("show"); }
 function closeQueryModal() { document.getElementById("queryModal").classList.remove("show"); }
 
 async function queryOrder() {
   let id = document.getElementById("queryInput").value.trim();
   const resDiv = document.getElementById("queryResult");
-
-  if (!id) {
-    resDiv.innerHTML = "<span style='color:var(--danger);'>請輸入號碼！</span>";
-    return;
-  }
-
-  // 貼心防呆：純數字自動補 # 號及 0
-  if (/^\d+$/.test(id)) {
-      id = "#" + id.padStart(3, "0");
-      document.getElementById("queryInput").value = id;
-  } 
-  // 有打 # 但沒打滿三碼
-  else if (id.startsWith("#") && id.length < 4) {
-      const num = id.replace("#", "");
-      id = "#" + num.padStart(3, "0");
-      document.getElementById("queryInput").value = id;
-  }
-
-  resDiv.innerHTML = "查詢中，請稍候...";
-  
+  if (!id) return alert("請輸入號碼");
+  if (/^\d+$/.test(id)) id = "#" + id.padStart(3, "0");
+  resDiv.innerHTML = "查詢中...";
   try {
     const res = await fetch(GAS_API + "?action=checkMyOrder&id=" + encodeURIComponent(id) + "&t=" + Date.now());
     const json = await res.json();
-    
     if(!json) {
-      resDiv.innerHTML = "<span style='color:var(--danger); font-weight:bold;'>查無此訂單，請確認號碼是否正確。</span>";
+      resDiv.innerHTML = "查無此訂單";
     } else {
-      resDiv.innerHTML = `
-        <div style="padding:15px; background:#f9f9f9; border-radius:12px; border-left: 5px solid var(--info); text-align:left; line-height: 1.8;">
-          <div style="font-size: 14px; color: #666;">取餐號：<b style="font-size:24px; color:var(--danger);">${json.seqId}</b></div>
-          <div style="font-size: 16px; font-weight: bold; margin: 5px 0;">
-            目前狀態：<span style="color:var(--info); background: #eef6ff; padding: 4px 8px; border-radius: 5px;">${json.status}</span>
-          </div>
-          <div style="font-size: 14px; color: #555; margin-top:10px;">
-            <b>餐點內容：</b><br>${json.items.split(' | ').join('<br>')}
-          </div>
-        </div>`;
+      resDiv.innerHTML = `<div style="padding:15px; background:#f9f9f9; border-radius:12px; border-left: 5px solid var(--info);">
+          <b>取餐號：${json.seqId}</b><br>狀態：${json.status}<br>內容：${json.items}</div>`;
     }
-  } catch(e) { 
-    resDiv.innerHTML = "<span style='color:var(--danger);'>查詢失敗，請檢查網路連線。</span>"; 
-  }
+  } catch(e) { resDiv.innerHTML = "查詢失敗"; }
 }
 
-/* --- LINE Pay 付款後跳轉攔截 --- */
 async function checkLinePayReturn() {
   const urlParams = new URLSearchParams(window.location.search);
   const status = urlParams.get('status');
   const orderId = urlParams.get('orderId');
-
   if (status === 'success' && orderId) {
     document.getElementById("orderPage").style.display = 'none';
-    document.getElementById("orderPage").classList.remove("active");
     document.getElementById("successPage").style.display = 'block';
-    document.getElementById("successPage").classList.add("active");
-    
-    document.getElementById("successDetail").innerHTML = "正在查詢您的取餐號，請稍候...";
-
     try {
       const res = await fetch(GAS_API + "?action=checkMyOrder&id=" + orderId);
       const json = await res.json();
-      
       if (json && json.seqId) {
-        document.getElementById("successDetail").innerHTML = `LINE Pay 付款成功！<br>您的取餐號為(建議請截圖)：<br><b style="font-size:36px; color:var(--danger);">${json.seqId}</b><br><span style="font-size:14px; color:#666;">訂單ID：${orderId}</span>`;
-        window.history.replaceState(null, null, window.location.pathname);
-      } else {
-        document.getElementById("successDetail").innerHTML = `付款成功！<br>取餐號查詢延遲，請向現場人員出示訂單ID：<br><b style="font-size:18px;">${orderId}</b>`;
+        document.getElementById("successDetail").innerHTML = `付款成功！<br>取餐號：<b style="font-size:36px; color:var(--danger);">${json.seqId}</b><br>ID：${orderId}`;
       }
-    } catch (e) {
-      document.getElementById("successDetail").innerHTML = `付款成功！<br>系統忙碌中，請向現場人員出示訂單ID：<br><b style="font-size:18px;">${orderId}</b>`;
-    }
+    } catch (e) {}
+    window.history.replaceState(null, null, window.location.pathname);
   }
 }
 
-// 頁面載入時初始化
-initializeLiff(); // <--- 新增這行
-fetchMenuData(); // 改成先抓資料，抓完會自動渲染套餐與單點介面
+initializeLiff();
+fetchMenuData();
 checkLinePayReturn();
 </script>
 </body>
