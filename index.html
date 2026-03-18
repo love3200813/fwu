@@ -68,35 +68,38 @@ input, select { width:100%; border:1px solid var(--line); border-radius:14px; pa
   </div>
 
   <div id="comboModeWrap">
-    <div class="combo-step">
-      <div class="step-head">
-        <div class="brand-title" style="font-size:20px;">1. 選擇主餐</div>
-        <span id="stepMainChip" class="step-chip">進行中</span>
-      </div>
-      <div id="mainGrid" class="grid"></div>
+  <div class="combo-step">
+    <div class="step-head">
+      <div class="brand-title" style="font-size:20px;">1. 選擇主餐</div>
+      <span id="stepMainChip" class="step-chip">請選擇</span>
+    </div>
+    <div id="mainGrid" class="grid"></div>
+  </div>
+
+  <div id="comboOptionsWrap" class="combo-step step-lock">
+    <div class="brand-title" style="font-size:20px; margin-bottom:15px;">2. 套餐配項</div>
+    
+    <div style="margin-bottom:15px;">
+      <label style="font-weight:900; display:block; margin-bottom:5px;">主餐加料 (選填)</label>
+      <select id="comboAddonSelect" onchange="syncComboSelection()"></select>
     </div>
 
-    <div id="addonStep" class="combo-step step-lock">
-      <div class="brand-title" style="font-size:20px; margin-bottom:10px;">主餐加料(選填)</div>
-      <div id="addonGrid" class="grid" style="grid-template-columns:repeat(auto-fit,minmax(140px,1fr));"></div>
+    <div style="margin-bottom:15px;">
+      <label style="font-weight:900; display:block; margin-bottom:5px;">選擇飲料</label>
+      <select id="comboDrinkSelect" onchange="syncComboSelection()"></select>
     </div>
 
-    <div id="drinkStep" class="combo-step step-lock">
-      <div class="step-head">
-        <div class="brand-title" style="font-size:20px;">2. 選擇飲料</div>
-        <span id="stepDrinkChip" class="step-chip">未開始</span>
-      </div>
-      <div id="drinkGrid" class="grid"></div>
+    <div style="margin-bottom:15px;">
+      <label style="font-weight:900; display:block; margin-bottom:5px;">選擇副餐</label>
+      <select id="comboSideSelect" onchange="syncComboSelection()"></select>
     </div>
-
-    <div id="sideStep" class="combo-step step-lock">
-      <div class="step-head">
-        <div class="brand-title" style="font-size:20px;">3. 選擇副餐</div>
-        <span id="stepSideChip" class="step-chip">未開始</span>
-      </div>
-      <div id="sideGrid" class="grid"></div>
+    
+    <div style="padding:10px; background:#fffceb; border-radius:12px; border:1px solid #ffeeba; text-align:right;">
+      <span style="font-weight:bold; color:#856404;">套餐小計：$</span>
+      <span id="currentComboPrice" style="font-size:24px; font-weight:900; color:var(--danger);">0</span>
     </div>
   </div>
+</div>
 
   <div id="singleModeWrap" style="display:none;">
     <div id="singleMenuWrap"></div>
@@ -279,35 +282,78 @@ function resetCombo() {
   renderComboUI();
 }
   
-/* --- 套餐邏輯 (支援圖片) --- */
+/* --- 優化版：套餐渲染與下拉選單邏輯 --- */
 function renderComboUI() {
+  // 渲染主餐卡片
   document.getElementById("mainGrid").innerHTML = COMBO_MAINS.map(m => `
     <div class="menu-card ${curCombo.main?.code===m.code?'active':''}" onclick="selectMain('${m.code}')">
       ${m.img ? `<img src="${m.img}" class="menu-img">` : ''}
-      <b>${m.code}. ${m.n}</b><br><small>套餐 $${m.comboPrice}</small>
+      <b>${m.code}. ${m.n}</b><br><small>套餐價 $${m.comboPrice}</small>
     </div>
   `).join("");
 
-  document.getElementById("addonGrid").innerHTML = COMBO_ADDONS.map(a => `
-    <div class="menu-card ${curCombo.addons.some(x=>x.n===a.n)?'active':''}" onclick="toggleAddon('${a.n}')">
-      ${a.img ? `<img src="${a.img}" class="menu-img" style="height:80px;">` : ''}
-      ${a.n} +$${a.p}
-    </div>
-  `).join("");
+  // 填充加料選單 (如果尚未填充過)
+  const addonSelect = document.getElementById("comboAddonSelect");
+  addonSelect.innerHTML = '<option value="">(不加料)</option>' + 
+    COMBO_ADDONS.map(a => `<option value="${a.n}">+ $${a.p} ${a.n}</option>`).join("");
 
-  document.getElementById("drinkGrid").innerHTML = COMBO_DRINKS.map(d => `
-    <div class="menu-card ${curCombo.drink?.n===d.n?'active':''}" onclick="selectDrink('${d.n}')">
-      ${d.img ? `<img src="${d.img}" class="menu-img">` : ''}
-      ${d.n} ${d.extra>0?'+$'+d.extra:''}
-    </div>
-  `).join("");
+  // 填充飲料選單
+  const drinkSelect = document.getElementById("comboDrinkSelect");
+  drinkSelect.innerHTML = COMBO_DRINKS.map(d => 
+    `<option value="${d.n}">${d.n} ${d.extra > 0 ? '(+ $'+d.extra+')' : '(內含)'}</option>`).join("");
 
-  document.getElementById("sideGrid").innerHTML = COMBO_SIDES.map(s => `
-    <div class="menu-card ${curCombo.side?.n===s.n?'active':''}" onclick="selectSide('${s.n}')">
-      ${s.img ? `<img src="${s.img}" class="menu-img">` : ''}
-      ${s.n} ${s.extra>0?'+$'+s.extra:''}
-    </div>
-  `).join("");
+  // 填充副餐選單
+  const sideSelect = document.getElementById("comboSideSelect");
+  sideSelect.innerHTML = COMBO_SIDES.map(s => 
+    `<option value="${s.n}">${s.n} ${s.extra > 0 ? '(+ $'+s.extra+')' : '(內含)'}</option>`).join("");
+}
+
+// 修改主餐選擇邏輯
+function selectMain(c) {
+  curCombo.main = COMBO_MAINS.find(x => x.code === c);
+  document.getElementById("comboOptionsWrap").classList.remove("step-lock");
+  document.getElementById("stepMainChip").innerText = "已選";
+  document.getElementById("stepMainChip").className = "step-chip ok";
+  
+  renderComboUI(); // 刷新高亮
+  syncComboSelection(); // 同步一次價格與物件
+}
+
+// 同步下拉選單的值到 curCombo 物件，並計算即時價格
+function syncComboSelection() {
+  if (!curCombo.main) return;
+  
+  const selectedAddonN = document.getElementById("comboAddonSelect").value;
+  const selectedDrinkN = document.getElementById("comboDrinkSelect").value;
+  const selectedSideN = document.getElementById("comboSideSelect").value;
+
+  const addonObj = COMBO_ADDONS.find(a => a.n === selectedAddonN) || { n: "", p: 0 };
+  const drinkObj = COMBO_DRINKS.find(d => d.n === selectedDrinkN) || { n: "未知", extra: 0 };
+  const sideObj = COMBO_SIDES.find(s => s.n === selectedSideN) || { n: "未知", extra: 0 };
+
+  // 更新全域變數 curCombo 供購物車使用
+  curCombo.drink = drinkObj;
+  curCombo.side = sideObj;
+  curCombo.addons = selectedAddonN ? [addonObj] : [];
+
+  // 計算並顯示套餐小計
+  const addonP = addonObj.p;
+  const total = curCombo.main.comboPrice + drinkObj.extra + sideObj.extra + addonP;
+  document.getElementById("currentComboPrice").innerText = total;
+}
+
+// 修改原有的 resetCombo 確保 UI 重置
+function resetCombo() {
+  curCombo = { main: null, drink: null, side: null, addons: [] };
+  document.getElementById("stepMainChip").innerText = "請選擇";
+  document.getElementById("stepMainChip").className = "step-chip";
+  document.getElementById("comboOptionsWrap").classList.add("step-lock");
+  document.getElementById("currentComboPrice").innerText = "0";
+  // 重置下拉選單到首項
+  document.getElementById("comboAddonSelect").selectedIndex = 0;
+  document.getElementById("comboDrinkSelect").selectedIndex = 0;
+  document.getElementById("comboSideSelect").selectedIndex = 0;
+  renderComboUI();
 }
 
 /* --- 單點邏輯 (支援圖片) --- */
