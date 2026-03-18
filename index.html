@@ -177,35 +177,32 @@ const BUSINESS_OPEN = { h:10, m:30 };
 const BUSINESS_CLOSE = { h:19, m:0 };
 const MIN_RESERVE_MINUTES = 60;
 
-/* --- 完整資料集 --- */
-const COMBO_MAINS = [
-  { code:"A", n:"沖繩經典", comboPrice:107, singlePrice:63 },
-  { code:"B", n:"炙燒明太子", comboPrice:117, singlePrice:73 },
-  { code:"C", n:"雙層起司", comboPrice:123, singlePrice:79 },
-  { code:"D", n:"松露炒菇", comboPrice:133, singlePrice:89 },
-  { code:"E", n:"煙燻雞肉", comboPrice:133, singlePrice:89 },
-  { code:"F", n:"日式炸雞", comboPrice:137, singlePrice:93 },
-  { code:"G", n:"咖哩可樂餅", comboPrice:137, singlePrice:93 },
-  { code:"H", n:"明太子干貝酥", comboPrice:137, singlePrice:93 },
-  { code:"I", n:"炸蝦天婦羅", comboPrice:147, singlePrice:103 },
-  { code:"J", n:"炸魚塔塔醬", comboPrice:147, singlePrice:103 },
-  { code:"K", n:"泡菜燒肉", comboPrice:147, singlePrice:103 },
-  { code:"L", n:"卡拉雞", comboPrice:153, singlePrice:109 },
-  { code:"M", n:"日式豬排", comboPrice:157, singlePrice:113 },
-  { code:"O", n:"蒜味蝦蝦飯", comboPrice:213, singlePrice:169 },
-  { code:"P", n:"奶油蝦蝦飯", comboPrice:223, singlePrice:179 }
-];
-const COMBO_DRINKS = [
-  { n:"原味紅茶", extra:0, p:30 }, { n:"無糖豆漿", extra:0, p:35 }, { n:"黑糖豆漿", extra:0, p:35 },
-  { n:"紅茶豆漿", extra:0, p:35 }, { n:"蜂蜜檸檬", extra:0, p:35 }, { n:"黑芝麻豆漿", extra:5, p:40 }, { n:"日式奶茶", extra:5, p:40 }
-];
-const COMBO_SIDES = [
-  { n:"咖哩可樂餅", extra:0, p:35 }, { n:"海苔醬薯條", extra:0, p:43 }, { n:"蜂蜜芥末薯條", extra:0, p:43 },
-  { n:"酥炸菇", extra:0, p:43 }, { n:"酥炸蝦頭", extra:0, p:43 }, { n:"洋蔥圈", extra:6, p:49 },
-  { n:"黃金雞塊", extra:6, p:49 }, { n:"日式炸雞", extra:16, p:59 }, { n:"炸魚薯條", extra:26, p:69 }
-];
-const COMBO_ADDONS = [ { n:"換素餐肉", p:10 }, { n:"加起司", p:10 }, { n:"加玉子燒", p:15 }, { n:"加炸蝦", p:35 } ];
+/* --- 動態菜單變數 --- */
+let COMBO_MAINS = [];
+let COMBO_DRINKS = [];
+let COMBO_SIDES = [];
+let COMBO_ADDONS = [];
 
+// 新增抓取菜單功能
+async function fetchMenuData() {
+  try {
+    const res = await fetch(GAS_API + "?action=getMenu&t=" + Date.now());
+    const menuData = await res.json();
+    
+    // 將 GAS 傳回的資料放進變數
+    COMBO_MAINS = menuData.mains;
+    COMBO_DRINKS = menuData.drinks;
+    COMBO_SIDES = menuData.sides;
+    COMBO_ADDONS = menuData.addons;
+
+    // 資料載入後才渲染畫面
+    renderComboUI();
+    renderSingleUI();
+  } catch(err) {
+    alert("菜單載入失敗，請稍後重試或通知店家：" + err.message);
+  }
+}
+  
 /* --- 狀態變數 --- */
 let basket = [];
 let orderMode = "combo";
@@ -549,8 +546,8 @@ async function checkLinePayReturn() {
 }
 
 // 頁面載入時初始化
-renderComboUI();
-renderSingleUI();
+fetchMenuData(); // 改成先抓資料，抓完會自動渲染套餐與單點介面
+checkLinePayReturn();
 checkLinePayReturn(); 
 </script>
 </body>
