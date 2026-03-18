@@ -765,8 +765,17 @@ async function printOrderLabel(o){
   if(!printerDevice || !endpointOut) throw new Error("請先建立 USB 連線");
   const customerReceipt = buildCustomerReceiptCanvas(o);
   const kitchenReceipt = buildKitchenReceiptCanvas(o);
-  const finalCanvas = mergeReceiptCanvases(customerReceipt, kitchenReceipt);
-  await printCanvasToPrinter(finalCanvas, finalCanvas.height);
+  
+  // 【修復關鍵】不要合併！分兩次列印，徹底解決印表機記憶體塞爆問題
+  
+  // 1. 先送出「客人單」
+  await printCanvasToPrinter(customerReceipt.canvas, customerReceipt.finalHeight);
+  
+  // 2. 暫停 1.5 秒，讓印表機把紙吐完，並「清空內部記憶體」
+  await new Promise(resolve => setTimeout(resolve, 1500));
+  
+  // 3. 再送出「廚房單」
+  await printCanvasToPrinter(kitchenReceipt.canvas, kitchenReceipt.finalHeight);
 }
 
 async function printCanvasToPrinter(canvas, finalHeight){
