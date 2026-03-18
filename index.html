@@ -105,17 +105,28 @@ input, select { width:100%; border:1px solid var(--line); border-radius:14px; pa
     <div id="singleMenuWrap"></div>
   </div>
 
-  <div class="inline-summary">
-    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
-      <div class="brand-title" style="font-size:22px;">🛒 我的購物車</div>
-      <div style="font-size:24px; font-weight:900;">$<span id="inlineSummaryTotal">0</span></div>
-    </div>
-    <div id="basketItemsList" style="margin-bottom:15px; color:#555;">尚未加入餐點(選好餐點請先加入到購物車內)</div>
-    <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
-      <button class="btn btn-secondary" onclick="addToBasket()">＋加入購物車</button>
-      <button id="goCheckoutBtn" class="btn btn-primary" onclick="showCheckout()" disabled>確認結帳</button>
-    </div>
+  <div class="inline-summary" style="border-color: #111; background: #fff;">
+  <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
+    <div class="brand-title" style="font-size:20px;">🍱 當前餐點小計</div>
+    <div style="font-size:26px; font-weight:900; color:var(--danger);">$<span id="currentComboPriceDisplay">0</span></div>
   </div>
+  <button class="btn btn-secondary btn-block" style="background:#111; color:#fff;" onclick="addToBasket()">＋加入購物車 (點完請按此)</button>
+</div>
+
+<div id="cartSection" style="margin-top:20px; display:none;">
+  <div class="brand-title" style="font-size:20px; margin-bottom:10px;">🛒 已加入清單</div>
+  <div id="basketItemsList"></div>
+</div>
+
+<div id="stickyCheckoutBar" style="position:fixed; bottom:0; left:0; right:0; background:rgba(255,255,255,0.96); backdrop-filter:blur(10px); border-top:2px solid #111; padding:15px 20px; display:none; z-index:999; box-shadow: 0 -5px 20px rgba(0,0,0,0.1);">
+  <div style="max-width:1100px; margin:0 auto; display:flex; justify-content:space-between; align-items:center;">
+    <div>
+      <div style="font-size:14px; color:#666; font-weight:bold;">共 <span id="cartQty">0</span> 份餐點</div>
+      <div style="font-size:24px; font-weight:900; color:var(--danger);">$<span id="cartTotalBottom">0</span></div>
+    </div>
+    <button id="goCheckoutBtn" class="btn btn-primary" style="padding:12px 40px; font-size:18px;" onclick="showCheckout()">確認結帳 ➔</button>
+  </div>
+</div>
 
   <div id="checkoutPanel" class="combo-step" style="display:none; margin-top:20px; background:#fdfdfd; border:2px solid var(--info);">
     <h2 class="brand-title" style="margin-bottom:15px;">步驟 2：確認資料</h2>
@@ -339,7 +350,7 @@ function syncComboSelection() {
   // 計算並顯示套餐小計
   const addonP = addonObj.p;
   const total = curCombo.main.comboPrice + drinkObj.extra + sideObj.extra + addonP;
-  document.getElementById("currentComboPrice").innerText = total;
+  document.getElementById("currentComboPriceDisplay").innerText = total;
 }
 
 // 修改原有的 resetCombo 確保 UI 重置
