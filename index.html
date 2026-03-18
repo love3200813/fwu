@@ -498,10 +498,6 @@ function hideCheckout() {
   // 5. 畫面滾動到最上方，方便客人繼續點餐
   window.scrollTo({top: 0, behavior:'smooth'});
 }
-  
-  // 【新增】如果客人按「返回點餐」，再把底部的懸浮列叫回來
-  document.getElementById("stickyCheckoutBar").style.display = "block"; 
-}
 
 async function submitOrder() {
   const name = document.getElementById("customerName").value.trim();
