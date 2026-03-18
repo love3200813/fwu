@@ -815,8 +815,6 @@ function initSystem() {
     const interval = document.hidden ? 15000 : 3000; 
     
     if (now - lastFetchTime >= interval) {
-      // 加入這行測試代碼，它會在後台印出目前的狀態
-      console.log(document.hidden ? "😴 背景休眠中：15秒抓一次" : "⚡ 畫面前景：3秒抓一次");
       
       fetchOrders();
       lastFetchTime = now;
