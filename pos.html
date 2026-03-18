@@ -658,9 +658,9 @@ function buildCustomerReceiptCanvas(o){
   ctx.font = "24px sans-serif"; ctx.fillText("謝謝光臨，請依叫號取餐", 10, y); y += 36;
   
   const finalCanvas = document.createElement("canvas");
-  finalCanvas.width = width; finalCanvas.height = y + 20;
-  finalCanvas.getContext("2d").drawImage(tempCanvas, 0, 0, width, y + 20, 0, 0, width, y + 20);
-  return { canvas: finalCanvas, finalHeight: y + 20 };
+  finalCanvas.width = width; finalCanvas.height = y + 40;
+  finalCanvas.getContext("2d").drawImage(tempCanvas, 0, 0, width, y + 40, 0, 0, width, y + 40);
+  return { canvas: finalCanvas, finalHeight: y + 40 };
 }
    function buildKitchenReceiptCanvas(o){
   // 【修復關鍵】同時支援逗號(,)與直線(|)切割
