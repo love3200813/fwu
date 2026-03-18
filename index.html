@@ -224,7 +224,47 @@ function setOrderMode(m) {
   document.getElementById("comboModeWrap").style.display = m==='combo'?'block':'none';
   document.getElementById("singleModeWrap").style.display = m==='single'?'block':'none';
 }
+/* --- 點擊選餐控制邏輯 --- */
+function selectMain(c) {
+  curCombo.main = COMBO_MAINS.find(x=>x.code===c);
+  document.getElementById("addonStep").classList.remove("step-lock");
+  document.getElementById("drinkStep").classList.remove("step-lock");
+  document.getElementById("stepMainChip").innerText = "已選";
+  document.getElementById("stepMainChip").className = "step-chip ok";
+  renderComboUI();
+}
 
+function toggleAddon(n) {
+  const a = COMBO_ADDONS.find(x=>x.n===n);
+  const idx = curCombo.addons.findIndex(x=>x.n===n);
+  if(idx>-1) curCombo.addons.splice(idx,1); else curCombo.addons.push(a);
+  renderComboUI();
+}
+
+function selectDrink(n) {
+  curCombo.drink = COMBO_DRINKS.find(x=>x.n===n);
+  document.getElementById("sideStep").classList.remove("step-lock");
+  document.getElementById("stepDrinkChip").innerText = "已選";
+  document.getElementById("stepDrinkChip").className = "step-chip ok";
+  renderComboUI();
+}
+
+function selectSide(n) {
+  curCombo.side = COMBO_SIDES.find(x=>x.n===n);
+  document.getElementById("stepSideChip").innerText = "已選";
+  document.getElementById("stepSideChip").className = "step-chip ok";
+  renderComboUI();
+}
+
+function resetCombo() {
+  curCombo = { main: null, drink: null, side: null, addons: [] };
+  document.getElementById("stepMainChip").innerText="進行中"; document.getElementById("stepMainChip").className="step-chip";
+  document.getElementById("stepDrinkChip").innerText="未開始"; document.getElementById("stepDrinkChip").className="step-chip";
+  document.getElementById("stepSideChip").innerText="未開始"; document.getElementById("stepSideChip").className="step-chip";
+  ["addonStep","drinkStep","sideStep"].forEach(id => document.getElementById(id).classList.add("step-lock"));
+  renderComboUI();
+}
+  
 /* --- 套餐邏輯 (支援圖片) --- */
 function renderComboUI() {
   document.getElementById("mainGrid").innerHTML = COMBO_MAINS.map(m => `
