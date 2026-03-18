@@ -619,7 +619,7 @@ function drawWrappedText(ctx, text, x, y, maxWidth, lineHeight) {
     }
   }
   ctx.fillText(line, x, currentY);
-  return currentY + lineHeight;
+  return currentY + lineHeight; // 回傳最後的高度，讓下一行知道從哪開始
 }
 
 function buildCustomerReceiptCanvas(o){
@@ -665,42 +665,45 @@ function buildCustomerReceiptCanvas(o){
 }
 
 function buildKitchenReceiptCanvas(o){
-  const items = String(o.content || "").split(",");
+  // 這裡改用 | 或 , 來切割，確保長文字能正確分行
+  const items = String(o.content || "").split(" | "); 
   const width = 384;
-  const lineHeight = 46;
+  const lineHeight = 42; // 稍微調小一點行高
 
   const tempCanvas = document.createElement("canvas");
   const ctx = tempCanvas.getContext("2d");
-  tempCanvas.width = width; tempCanvas.height = 3000;
+  tempCanvas.width = width; 
+  tempCanvas.height = 5000; // 預設一個極高的高度，最後再裁切
+  
   ctx.fillStyle = "#FFFFFF"; ctx.fillRect(0, 0, width, tempCanvas.height);
   ctx.fillStyle = "#000000"; ctx.textBaseline = "top";
   
   let y = 10;
-  ctx.font = "bold 42px sans-serif"; ctx.fillText("店員 / 廚房單", 10, y); y += 50;
-  ctx.font = "bold 50px sans-serif"; ctx.fillText("飯丸屋", 10, y); y += 62;
-  ctx.font = "bold 52px sans-serif"; ctx.fillText(String(o.seq || ""), 10, y); y += 62;
-  ctx.font = "30px sans-serif";
-  ctx.fillText("取餐：" + formatPickupDisplay(o.rawPickup || o.pickup), 10, y); y += 44;
-  ctx.fillText("班次：" + String(o.shiftName || "未指定"), 10, y); y += 44;
-  if(o.customerName){ ctx.fillText("姓名：" + String(o.customerName), 10, y); y += 40; }
-  if(o.customerPhone){ ctx.fillText("電話：" + String(o.customerPhone), 10, y); y += 40; }
-  ctx.font = "26px monospace"; ctx.fillText("--------------------------", 10, y); y += 38;
+  ctx.font = "bold 40px sans-serif"; ctx.fillText("廚房製作單", 10, y); y += 50;
+  ctx.font = "bold 52px sans-serif"; ctx.fillText(String(o.seq || ""), 10, y); y += 65;
   
-  ctx.font = "bold 38px sans-serif";
+  ctx.font = "28px sans-serif";
+  ctx.fillText("取餐：" + formatPickupDisplay(o.rawPickup || o.pickup), 10, y); y += 40;
+  ctx.font = "24px monospace"; ctx.fillText("--------------------------", 10, y); y += 35;
+  
+  // 重點：處理超長套餐內容
+  ctx.font = "bold 34px sans-serif"; // 稍微縮小字體確保寬度夠用
   for(const item of items){
     if(item.trim()){
-        y = drawWrappedText(ctx, "・" + item.trim(), 10, y, 360, lineHeight);
-        y += 10;
+        // 這裡調用上面的自動換行函數，maxWidth 設為 360 留一點邊距
+        y = drawWrappedText(ctx, "● " + item.trim(), 10, y, 360, lineHeight);
+        y += 10; // 每筆餐點間的間隔
     }
   }
   
-  ctx.font = "26px monospace"; ctx.fillText("--------------------------", 10, y); y += 38;
-  ctx.font = "bold 34px sans-serif"; ctx.fillText("付款：" + String(o.pay || ""), 10, y); y += 42;
+  ctx.font = "24px monospace"; ctx.fillText("--------------------------", 10, y); y += 35;
+  ctx.font = "bold 30px sans-serif"; ctx.fillText("備註：" + String(o.pay || ""), 10, y); y += 40;
   
+  // 根據實際畫到的 Y 位置，重新裁切畫布，確保不會有空白也不會斷掉
   const finalCanvas = document.createElement("canvas");
-  finalCanvas.width = width; finalCanvas.height = y + 20;
-  finalCanvas.getContext("2d").drawImage(tempCanvas, 0, 0, width, y + 20, 0, 0, width, y + 20);
-  return { canvas: finalCanvas, finalHeight: y + 20 };
+  finalCanvas.width = width; finalCanvas.height = y + 30;
+  finalCanvas.getContext("2d").drawImage(tempCanvas, 0, 0, width, y + 30, 0, 0, width, y + 30);
+  return { canvas: finalCanvas, finalHeight: y + 30 };
 }
 
 function mergeReceiptCanvases(topReceipt, bottomReceipt){
