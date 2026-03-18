@@ -34,7 +34,16 @@ html,body{ margin:0; padding:0; font-family:"Microsoft JhengHei",sans-serif; bac
 .step-lock{ opacity:.4; pointer-events:none; }
 .step-chip{ border-radius:999px; padding:7px 12px; font-size:13px; font-weight:900; background:#f2f2f2; color:#555; }
 .step-chip.ok{ background:#ecfdf3; color:#15803d; }
-.cart-item-box { background: #fff; border: 1px solid var(--line); border-radius: 12px; padding: 12px; margin-bottom: 10px; position: relative; border-left: 5px solid #111; }
+.cart-item-box { 
+  background: #fff; 
+  border: 1px solid var(--line); 
+  border-radius: 12px; 
+  padding: 12px 40px 12px 12px; /* 右邊加大到 40px，避免文字撞到 X */
+  margin-bottom: 10px; 
+  position: relative; 
+  border-left: 5px solid #111; 
+  word-break: break-all; /* 強制長文字換行，避免衝出去 */
+}
 .del-btn { position: absolute; top: 10px; right: 10px; color: var(--danger); cursor: pointer; font-weight: bold; }
 .inline-summary{ margin-top:18px; background:#fff; border:2px solid var(--primary); border-radius:20px; padding:18px; box-shadow:var(--shadow); }
 .modal{ position:fixed; inset:0; background:rgba(0,0,0,.35); display:none; align-items:center; justify-content:center; z-index:200; padding:16px; }
