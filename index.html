@@ -30,6 +30,7 @@ html,body{ margin:0; padding:0; font-family:"Microsoft JhengHei",sans-serif; bac
 .grid{ display:grid; grid-template-columns:repeat(auto-fit,minmax(200px,1fr)); gap:12px; }
 .menu-card{ background:var(--panel); border:1px solid var(--line); border-radius:18px; padding:18px; cursor:pointer; transition:.18s; }
 .menu-card.active{ border-color:#111; background:#f9f9f9; box-shadow: inset 0 0 0 1px #111; }
+.menu-img { width:100%; height:130px; object-fit:cover; border-radius:12px; margin-bottom:10px; background:#f0f0f0; }
 .step-lock{ opacity:.4; pointer-events:none; }
 .step-chip{ border-radius:999px; padding:7px 12px; font-size:13px; font-weight:900; background:#f2f2f2; color:#555; }
 .step-chip.ok{ background:#ecfdf3; color:#15803d; }
@@ -224,79 +225,43 @@ function setOrderMode(m) {
   document.getElementById("singleModeWrap").style.display = m==='single'?'block':'none';
 }
 
-/* --- 套餐邏輯 --- */
+/* --- 套餐邏輯 (支援圖片) --- */
 function renderComboUI() {
   document.getElementById("mainGrid").innerHTML = COMBO_MAINS.map(m => `
     <div class="menu-card ${curCombo.main?.code===m.code?'active':''}" onclick="selectMain('${m.code}')">
+      ${m.img ? `<img src="${m.img}" class="menu-img">` : ''}
       <b>${m.code}. ${m.n}</b><br><small>套餐 $${m.comboPrice}</small>
     </div>
   `).join("");
 
   document.getElementById("addonGrid").innerHTML = COMBO_ADDONS.map(a => `
     <div class="menu-card ${curCombo.addons.some(x=>x.n===a.n)?'active':''}" onclick="toggleAddon('${a.n}')">
+      ${a.img ? `<img src="${a.img}" class="menu-img" style="height:80px;">` : ''}
       ${a.n} +$${a.p}
     </div>
   `).join("");
 
   document.getElementById("drinkGrid").innerHTML = COMBO_DRINKS.map(d => `
     <div class="menu-card ${curCombo.drink?.n===d.n?'active':''}" onclick="selectDrink('${d.n}')">
+      ${d.img ? `<img src="${d.img}" class="menu-img">` : ''}
       ${d.n} ${d.extra>0?'+$'+d.extra:''}
     </div>
   `).join("");
 
   document.getElementById("sideGrid").innerHTML = COMBO_SIDES.map(s => `
     <div class="menu-card ${curCombo.side?.n===s.n?'active':''}" onclick="selectSide('${s.n}')">
+      ${s.img ? `<img src="${s.img}" class="menu-img">` : ''}
       ${s.n} ${s.extra>0?'+$'+s.extra:''}
     </div>
   `).join("");
 }
 
-function selectMain(c) {
-  curCombo.main = COMBO_MAINS.find(x=>x.code===c);
-  document.getElementById("addonStep").classList.remove("step-lock");
-  document.getElementById("drinkStep").classList.remove("step-lock");
-  document.getElementById("stepMainChip").innerText = "已選";
-  document.getElementById("stepMainChip").className = "step-chip ok";
-  renderComboUI();
-}
-
-function toggleAddon(n) {
-  const a = COMBO_ADDONS.find(x=>x.n===n);
-  const idx = curCombo.addons.findIndex(x=>x.n===n);
-  if(idx>-1) curCombo.addons.splice(idx,1); else curCombo.addons.push(a);
-  renderComboUI();
-}
-
-function selectDrink(n) {
-  curCombo.drink = COMBO_DRINKS.find(x=>x.n===n);
-  document.getElementById("sideStep").classList.remove("step-lock");
-  document.getElementById("stepDrinkChip").innerText = "已選";
-  document.getElementById("stepDrinkChip").className = "step-chip ok";
-  renderComboUI();
-}
-
-function selectSide(n) {
-  curCombo.side = COMBO_SIDES.find(x=>x.n===n);
-  document.getElementById("stepSideChip").innerText = "已選";
-  document.getElementById("stepSideChip").className = "step-chip ok";
-  renderComboUI();
-}
-
-function resetCombo() {
-  curCombo = { main: null, drink: null, side: null, addons: [] };
-  document.getElementById("stepMainChip").innerText="進行中"; document.getElementById("stepMainChip").className="step-chip";
-  document.getElementById("stepDrinkChip").innerText="未開始"; document.getElementById("stepDrinkChip").className="step-chip";
-  document.getElementById("stepSideChip").innerText="未開始"; document.getElementById("stepSideChip").className="step-chip";
-  ["addonStep","drinkStep","sideStep"].forEach(id => document.getElementById(id).classList.add("step-lock"));
-  renderComboUI();
-}
-
-/* --- 單點邏輯 --- */
+/* --- 單點邏輯 (支援圖片) --- */
 function renderSingleUI() {
   const categories = [
-    { name: "飯糰單點", list: COMBO_MAINS.map(m=>({n:m.n, p:m.singlePrice})) },
-    { name: "飲品單點", list: COMBO_DRINKS.map(d=>({n:d.n, p:d.p})) },
-    { name: "副餐單點", list: COMBO_SIDES.map(s=>({n:s.n, p:s.p})) }
+    { name: "飯糰單點", list: COMBO_MAINS.map(m=>({n:m.n, p:m.singlePrice, img:m.img})) },
+    { name: "飲品單點", list: COMBO_DRINKS.map(d=>({n:d.n, p:d.p, img:d.img})) },
+    { name: "副餐單點", list: COMBO_SIDES.map(s=>({n:s.n, p:s.p, img:s.img})) }
   ];
   document.getElementById("singleMenuWrap").innerHTML = categories.map(cat => `
     <div class="combo-step">
@@ -304,6 +269,7 @@ function renderSingleUI() {
       <div class="grid">
         ${cat.list.map(i => `
           <div class="menu-card">
+            ${i.img ? `<img src="${i.img}" class="menu-img">` : ''}
             <b>${i.n}</b><br>$${i.p}
             <div style="display:flex; align-items:center; gap:10px; margin-top:10px;">
               <button class="btn" style="padding:5px 10px;" onclick="changeSingle('${i.n}', -1, ${i.p})">-</button>
