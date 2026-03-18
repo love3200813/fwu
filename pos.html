@@ -691,7 +691,10 @@ function buildCustomerReceiptCanvas(o){
   }
   
   ctx.font = "24px monospace"; ctx.fillText("--------------------------", 10, y); y += 35;
-  ctx.font = "bold 30px sans-serif"; ctx.fillText("備註：" + String(o.pay || ""), 10, y); y += 40;
+  ctx.font = "bold 30px sans-serif"; 
+  // 【修復關鍵】使用自動換行工具，讓超長備註會自動往下折行，不會超出右邊界
+  y = drawWrappedText(ctx, "備註：" + String(o.pay || ""), 10, y, 360, 38); 
+  y += 30; // 底部留一點空白
   
   const finalCanvas = document.createElement("canvas");
   finalCanvas.width = width; finalCanvas.height = y + 30;
