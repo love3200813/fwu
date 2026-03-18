@@ -795,19 +795,33 @@ async function printCanvasToPrinter(canvas, finalHeight){
 }
 
 /* 初始化執行 (改由按鈕觸發) */
+let lastFetchTime = 0; // 紀錄最後一次抓取訂單的時間
+
 function initSystem() {
-  // 1. 先偷偷播一次極短的音效，藉此「解鎖」瀏覽器的音效限制
+  // 1. 解鎖瀏覽器音效限制
   playBeep(); 
   
   // 2. 隱藏啟動遮罩，秀出 POS 主畫面
   document.getElementById("startOverlay").style.display = "none";
   
-  // 3. 開始抓取資料與設定定時器 (原本的初始化邏輯)
+  // 3. 初始載入菜單與班次
   fetchMenuData(); 
   fetchCurrentShift();
-  setInterval(fetchOrders, 3000);
+  
+  // 4. 【新增】智能休眠抓單機制 (取代原本的 setInterval)
+  setInterval(() => {
+    const now = Date.now();
+    // 如果網頁被縮小或切換分頁，降速為 15 秒抓一次省額度；正常顯示時維持 3 秒抓一次
+    const interval = document.hidden ? 15000 : 3000; 
+    
+    if (now - lastFetchTime >= interval) {
+      fetchOrders();
+      lastFetchTime = now;
+    }
+  }, 1000); // 系統每秒背景檢查一次狀態
+
+  // 班次狀態比較不急，維持每 10 秒檢查一次即可
   setInterval(fetchCurrentShift, 10000);
-  fetchOrders();
 }
 </script>
 </body>
