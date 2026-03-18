@@ -435,12 +435,18 @@ function hideCheckout() { document.getElementById("checkoutPanel").style.display
 async function submitOrder() {
   const name = document.getElementById("customerName").value.trim();
   const phone = document.getElementById("customerPhone").value.trim();
-  if(!name || !phone) return alert("請填寫姓名與電話！");
+  const payMethod = document.getElementById("payMethod").value; // 先抓取付款方式
+
+  // 【關鍵修改】只有當付款方式是 LINEPAY 時，才強制要求填寫姓名與電話
+  if (payMethod === "LINEPAY" && (!name || !phone)) {
+    return alert("使用 LINE Pay 或預約取餐，請務必填寫聯絡姓名與電話！");
+  }
 
   const btn = document.getElementById("submitBtn");
   btn.disabled = true; btn.innerText = "送出中...";
 
   const mode = document.getElementById("pickupMode").value;
+  
   let pickup = "現場取餐";
   if(mode==='reserve') {
     const t = document.getElementById("pickupTime").value;
