@@ -665,69 +665,58 @@ function buildCustomerReceiptCanvas(o){
 }
 
 function buildKitchenReceiptCanvas(o){
+  // 這裡改用 | 或 , 來切割，確保長文字能正確分行
   const items = String(o.content || "").split(" | "); 
   const width = 384;
-  const lineHeight = 46;
+  const lineHeight = 42; // 稍微調小一點行高
 
   const tempCanvas = document.createElement("canvas");
   const ctx = tempCanvas.getContext("2d");
   tempCanvas.width = width; 
-  tempCanvas.height = 3000; // 降低初始高度
+  tempCanvas.height = 5000; // 預設一個極高的高度，最後再裁切
   
   ctx.fillStyle = "#FFFFFF"; ctx.fillRect(0, 0, width, tempCanvas.height);
   ctx.fillStyle = "#000000"; ctx.textBaseline = "top";
   
   let y = 10;
-  ctx.font = "bold 42px sans-serif"; ctx.fillText("廚房製作單", 10, y); y += 52;
+  ctx.font = "bold 40px sans-serif"; ctx.fillText("廚房製作單", 10, y); y += 50;
   ctx.font = "bold 52px sans-serif"; ctx.fillText(String(o.seq || ""), 10, y); y += 65;
   
   ctx.font = "28px sans-serif";
-  ctx.fillText("取餐：" + formatPickupDisplay(o.rawPickup || o.pickup), 10, y); y += 42;
-  ctx.font = "24px monospace"; ctx.fillText("--------------------------", 10, y); y += 38;
+  ctx.fillText("取餐：" + formatPickupDisplay(o.rawPickup || o.pickup), 10, y); y += 40;
+  ctx.font = "24px monospace"; ctx.fillText("--------------------------", 10, y); y += 35;
   
-  ctx.font = "bold 38px sans-serif";
+  // 重點：處理超長套餐內容
+  ctx.font = "bold 34px sans-serif"; // 稍微縮小字體確保寬度夠用
   for(const item of items){
     if(item.trim()){
-        // 自動換行並回傳新的 Y 座標
-        y = drawWrappedText(ctx, "●" + item.trim(), 10, y, 360, lineHeight);
-        y += 12;
+        // 這裡調用上面的自動換行函數，maxWidth 設為 360 留一點邊距
+        y = drawWrappedText(ctx, "● " + item.trim(), 10, y, 360, lineHeight);
+        y += 10; // 每筆餐點間的間隔
     }
   }
   
-  ctx.font = "24px monospace"; ctx.fillText("--------------------------", 10, y); y += 38;
-  ctx.font = "bold 32px sans-serif"; ctx.fillText("備註：" + String(o.pay || ""), 10, y); y += 45;
-
-  // 重要：精準裁切，高度只取到 y + 緩衝
-  const finalH = Math.min(y + 30, 3000);
-  const finalCanvas = document.createElement("canvas");
-  finalCanvas.width = width; finalCanvas.height = finalH;
-  finalCanvas.getContext("2d").drawImage(tempCanvas, 0, 0, width, finalH, 0, 0, width, finalH);
+  ctx.font = "24px monospace"; ctx.fillText("--------------------------", 10, y); y += 35;
+  ctx.font = "bold 30px sans-serif"; ctx.fillText("備註：" + String(o.pay || ""), 10, y); y += 40;
   
-  return { canvas: finalCanvas, finalHeight: finalH };
+  // 根據實際畫到的 Y 位置，重新裁切畫布，確保不會有空白也不會斷掉
+  const finalCanvas = document.createElement("canvas");
+  finalCanvas.width = width; finalCanvas.height = y + 30;
+  finalCanvas.getContext("2d").drawImage(tempCanvas, 0, 0, width, y + 30, 0, 0, width, y + 30);
+  return { canvas: finalCanvas, finalHeight: y + 30 };
 }
-   
-function mergeReceiptCanvases(topReceipt, bottomReceipt){
-  const gap = 60, bottomPadding = 80; // 稍微縮減緩衝
-  const topH = Math.ceil(topReceipt.finalHeight);
-  const bottomH = Math.ceil(bottomReceipt.finalHeight);
-  const totalH = topH + gap + bottomH + bottomPadding;
 
+function mergeReceiptCanvases(topReceipt, bottomReceipt){
+  const gap = 36, bottomPadding = 96;
+  const topHeight = Math.ceil(topReceipt.finalHeight), bottomHeight = Math.ceil(bottomReceipt.finalHeight);
   const finalCanvas = document.createElement("canvas");
   const finalCtx = finalCanvas.getContext("2d");
-  finalCanvas.width = 384;
-  finalCanvas.height = totalH;
-
-  finalCtx.fillStyle = "#FFFFFF"; 
-  finalCtx.fillRect(0, 0, 384, totalH);
-  
-  finalCtx.drawImage(topReceipt.canvas, 0, 0);
-  
-  // 分隔線
-  finalCtx.fillStyle = "#000000"; 
-  finalCtx.fillRect(10, topH + (gap/2), 364, 3);
-  
-  finalCtx.drawImage(bottomReceipt.canvas, 0, topH + gap);
-  
+  finalCanvas.width = Math.max(topReceipt.canvas.width, bottomReceipt.canvas.width);
+  finalCanvas.height = topHeight + gap + bottomHeight + bottomPadding;
+  finalCtx.fillStyle = "#FFFFFF"; finalCtx.fillRect(0, 0, finalCanvas.width, finalCanvas.height);
+  finalCtx.drawImage(topReceipt.canvas, 0, 0, topReceipt.canvas.width, topHeight, 0, 0, topReceipt.canvas.width, topHeight);
+  finalCtx.fillStyle = "#000000"; finalCtx.fillRect(10, topHeight + Math.floor(gap / 2), finalCanvas.width - 20, 2);
+  finalCtx.drawImage(bottomReceipt.canvas, 0, 0, bottomReceipt.canvas.width, bottomHeight, 0, topHeight + gap, bottomReceipt.canvas.width, bottomHeight);
   return finalCanvas;
 }
 
@@ -781,16 +770,31 @@ async function printShiftReceipt(data){
 
 async function printOrderLabel(o){
   if(!printerDevice || !endpointOut) throw new Error("請先建立 USB 連線");
-  
-  // 生成兩張原始畫布
   const customerReceipt = buildCustomerReceiptCanvas(o);
   const kitchenReceipt = buildKitchenReceiptCanvas(o);
-  
-  // 合併
   const finalCanvas = mergeReceiptCanvases(customerReceipt, kitchenReceipt);
-  
-  // 【重點】傳送合併後的畫布與它「完整的總高度」
   await printCanvasToPrinter(finalCanvas, finalCanvas.height);
+}
+
+async function printCanvasToPrinter(canvas, finalHeight){
+  const width = canvas.width; const height = Math.ceil(finalHeight);
+  const ctx = canvas.getContext("2d");
+  const img = ctx.getImageData(0, 0, width, height).data;
+  const widthBytes = 48; const bitmap = new Uint8Array(widthBytes * height);
+  bitmap.fill(255);
+  for(let py = 0; py < height; py++){
+    for(let px = 0; px < width; px++){
+      const idx = (py * width + px) * 4;
+      const gray = (img[idx] + img[idx+1] + img[idx+2]) / 3;
+      if(img[idx+3] > 128 && gray < 180) bitmap[py * widthBytes + Math.floor(px / 8)] &= ~(1 << (7 - (px % 8)));
+    }
+  }
+  const mmHeight = Math.max(60, Math.ceil(height / 8));
+  const header = new TextEncoder().encode(`SIZE 48 mm, ${mmHeight} mm\r\nGAP 2 mm, 0 mm\r\nCLS\r\nBITMAP 0,0,48,${height},0,`);
+  const footer = new TextEncoder().encode(`\r\nPRINT 1,1\r\nFEED 20 mm\r\n`);
+  const buf = new Uint8Array(header.length + bitmap.length + footer.length);
+  buf.set(header, 0); buf.set(bitmap, header.length); buf.set(footer, header.length + bitmap.length);
+  await printerDevice.transferOut(endpointOut, buf);
 }
 
 /* 初始化執行 (改由按鈕觸發) */
@@ -822,61 +826,6 @@ function initSystem() {
 
   // 班次狀態比較不急，維持每 10 秒檢查一次即可
   setInterval(fetchCurrentShift, 10000);
-}
-/* =========================
-   關鍵列印驅動：printCanvasToPrinter
-   負責將畫布轉換為印表機看得懂的 BITMAP 數據
-   ========================= */
-async function printCanvasToPrinter(canvas, finalHeight){
-  if(!printerDevice || !endpointOut) {
-    setMsg("列印失敗：未建立 USB 連線");
-    return;
-  }
-  
-  const width = canvas.width; // 固定 384
-  const height = Math.ceil(finalHeight);
-  
-  // 安全機制：如果高度超過 4000px 則強制截斷，避免 USB 傳輸炸掉
-  const safeHeight = Math.min(height, 4000); 
-  const ctx = canvas.getContext("2d");
-  const img = ctx.getImageData(0, 0, width, safeHeight).data;
-  
-  const widthBytes = 48; // 384點 / 8 = 48 bytes
-  const bitmap = new Uint8Array(widthBytes * safeHeight);
-  bitmap.fill(255); // 預設白色
-  
-  // 點陣圖轉換演算法
-  for(let py = 0; py < safeHeight; py++){
-    for(let px = 0; px < width; px++){
-      const idx = (py * width + px) * 4;
-      const gray = (img[idx] + img[idx+1] + img[idx+2]) / 3;
-      // 如果透明度夠高且顏色夠深，則打點(黑色)
-      if(img[idx+3] > 128 && gray < 180) {
-        bitmap[py * widthBytes + Math.floor(px / 8)] &= ~(1 << (7 - (px % 8)));
-      }
-    }
-  }
-  
-  // TSPL 指令包裝
-  // SIZE 單位是 mm，8 像素約等於 1mm，額外加 12mm 緩衝確保不切字
-  const mmHeight = Math.ceil(safeHeight / 8) + 12;
-  const header = new TextEncoder().encode(`SIZE 48 mm, ${mmHeight} mm\r\nGAP 0,0\r\nCLS\r\nBITMAP 0,0,48,${safeHeight},0,`);
-  const footer = new TextEncoder().encode(`\r\nPRINT 1,1\r\n`);
-  
-  // 組合數據包
-  const buf = new Uint8Array(header.length + bitmap.length + footer.length);
-  buf.set(header, 0); 
-  buf.set(bitmap, header.length); 
-  buf.set(footer, header.length + bitmap.length);
-  
-  try {
-    // 透過 WebUSB 傳送到印表機
-    await printerDevice.transferOut(endpointOut, buf);
-    setMsg("列印指令已成功送出");
-  } catch (e) {
-    setMsg("列印失敗：USB 傳輸錯誤 " + e.message);
-    console.error("Print Error:", e);
-  }
 }
 </script>
 </body>
