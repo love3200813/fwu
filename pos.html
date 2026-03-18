@@ -170,23 +170,32 @@ h2 { color:#2C2C2C; margin-top:0; }
 // ==========================================
 const GAS_API = "https://script.google.com/macros/s/AKfycbz0HQ7EsRj1kFhP-UT9DIn90WgXt7q-H8vkEh3fD79_4BuCm5HnCFGF9q3h1mf6pY4s/exec";
 
-/* --- 完整菜單資料 (依照您的菜單圖片植入) --- */
-const MAINS = [
-  {code:"A", n:"沖繩經典", cp:107, sp:63}, {code:"B", n:"炙燒明太子", cp:117, sp:73}, {code:"C", n:"雙層起司", cp:123, sp:79},
-  {code:"D", n:"松露炒菇", cp:133, sp:89}, {code:"E", n:"煙燻雞肉", cp:133, sp:89}, {code:"F", n:"日式炸雞", cp:137, sp:93},
-  {code:"G", n:"咖哩可樂餅", cp:137, sp:93}, {code:"H", n:"明太子干貝酥", cp:137, sp:93}, {code:"I", n:"炸蝦天婦羅", cp:147, sp:103},
-  {code:"J", n:"炸魚塔塔醬", cp:147, sp:103}, {code:"K", n:"泡菜燒肉", cp:147, sp:103}, {code:"L", n:"卡拉雞", cp:153, sp:109},
-  {code:"M", n:"日式豬排塔塔醬", cp:157, sp:113}, {code:"O", n:"蒜味蝦蝦飯", cp:213, sp:169}, {code:"P", n:"奶油蝦蝦飯", cp:223, sp:179}
-];
-const DRINKS = [
-  {n:"原味紅茶", e:0, sp:30}, {n:"無糖豆漿", e:0, sp:35}, {n:"黑糖豆漿", e:0, sp:35}, {n:"紅茶豆漿", e:0, sp:35},
-  {n:"蜂蜜檸檬", e:0, sp:35}, {n:"黑芝麻豆漿", e:5, sp:40}, {n:"日式奶茶", e:5, sp:40}
-];
-const SIDES = [
-  {n:"咖哩可樂餅", e:0, sp:35}, {n:"海苔醬薯條", e:0, sp:43}, {n:"蜂蜜芥末薯條", e:0, sp:43}, {n:"酥炸菇", e:0, sp:43},
-  {n:"酥炸蝦頭", e:0, sp:43}, {n:"洋蔥圈", e:6, sp:49}, {n:"黃金雞塊", e:6, sp:49}, {n:"蜂蜜芥末日式炸雞", e:16, sp:59}, {n:"炸魚薯條塔塔醬", e:26, sp:69}
-];
-const ADDONS = [ {n:"換素餐肉", p:10}, {n:"加起司片", p:10}, {n:"加玉子燒", p:15}, {n:"加炸蝦", p:35} ];
+/* --- 動態菜單變數 --- */
+let MAINS = [];
+let DRINKS = [];
+let SIDES = [];
+let ADDONS = [];
+
+// 新增抓取菜單功能
+async function fetchMenuData() {
+  try {
+    setMsg("正在載入最新菜單..."); // 顯示在左下角的狀態
+    const res = await fetch(GAS_API + "?action=getMenu&t=" + Date.now());
+    const menuData = await res.json();
+    
+    // 將 GAS 傳回的資料放進變數
+    MAINS = menuData.mains;
+    DRINKS = menuData.drinks;
+    SIDES = menuData.sides;
+    ADDONS = menuData.addons;
+
+    // 資料載入後才渲染畫面
+    renderPosUI();
+    setMsg("菜單載入完成");
+  } catch(err) {
+    alert("菜單載入失敗，請確認網路或試算表設定：" + err.message);
+  }
+}
 
 /* 原本的變數與狀態宣告 */
 let printerDevice = null;
@@ -778,7 +787,12 @@ async function printCanvasToPrinter(canvas, finalHeight){
 }
 
 /* 初始化執行 */
-renderPosUI();
+fetchMenuData(); // 改成先抓資料，抓完會自動幫您 renderPosUI
+fetchCurrentShift();
+setInterval(fetchOrders, 3000);
+setInterval(fetchCurrentShift, 10000);
+fetchOrders();/* 初始化執行 */
+fetchMenuData(); // 改成先抓資料，抓完會自動幫您 renderPosUI
 fetchCurrentShift();
 setInterval(fetchOrders, 3000);
 setInterval(fetchCurrentShift, 10000);
