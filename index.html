@@ -447,8 +447,7 @@ function showCheckout() {
 function hideCheckout() { document.getElementById("checkoutPanel").style.display = "none"; }
 
 async function submitOrder() {
-  // 👇 【加入這行測試代碼】讓系統大聲說出它抓到什麼 👇
-  alert("準備送出！目前抓到的 LINE ID 是：" + customerLineId);
+  
   const name = document.getElementById("customerName").value.trim();
   const phone = document.getElementById("customerPhone").value.trim();
   const payMethod = document.getElementById("payMethod").value; // 先抓取付款方式
