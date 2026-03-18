@@ -171,7 +171,7 @@ input, select { width:100%; border:1px solid var(--line); border-radius:14px; pa
     <div id="queryResult" style="margin-top:15px;"></div>
   </div>
 </div>
-
+<script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
 <script>
 const GAS_API = "https://script.google.com/macros/s/AKfycbz0HQ7EsRj1kFhP-UT9DIn90WgXt7q-H8vkEh3fD79_4BuCm5HnCFGF9q3h1mf6pY4s/exec";
 const BUSINESS_OPEN = { h:10, m:30 };
@@ -183,7 +183,21 @@ let COMBO_MAINS = [];
 let COMBO_DRINKS = [];
 let COMBO_SIDES = [];
 let COMBO_ADDONS = [];
+/* --- LINE LIFF 初始化與身分變數 --- */
+let customerLineId = ""; // 用來儲存客人的專屬 LINE ID
 
+async function initializeLiff() {
+  try {
+    await liff.init({ liffId: "2009519091-Khodkh2u" }); // 您的專屬 ID
+    if (liff.isLoggedIn()) {
+      const profile = await liff.getProfile();
+      customerLineId = profile.userId; 
+    }
+  } catch (err) {
+    console.error("LIFF 初始化失敗:", err);
+  }
+}
+  
 // 新增抓取菜單功能
 async function fetchMenuData() {
   try {
@@ -459,7 +473,9 @@ async function submitOrder() {
     total: basket.reduce((s,i)=>s+i.price, 0),
     pickupTime: pickup,
     payMethod: document.getElementById("payMethod").value,
-    customerName: name, customerPhone: phone
+    customerName: name, 
+    customerPhone: phone,
+    lineUserId: customerLineId // <--- 【重點】加在這裡！
   };
 
   try {
@@ -558,6 +574,7 @@ async function checkLinePayReturn() {
 }
 
 // 頁面載入時初始化
+initializeLiff(); // <--- 新增這行
 fetchMenuData(); // 改成先抓資料，抓完會自動渲染套餐與單點介面
 checkLinePayReturn();
 </script>
