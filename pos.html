@@ -623,14 +623,15 @@ function drawWrappedText(ctx, text, x, y, maxWidth, lineHeight) {
 }
 
 function buildCustomerReceiptCanvas(o){
-  const items = String(o.content || "").split(",");
+  // 【修復關鍵】同時支援逗號(,)與直線(|)切割，並過濾空白
+  const items = String(o.content || "").split(/[,|]/).map(i => i.trim()).filter(i => i);
   const width = 384;
   const lineHeight = 40; 
 
   const tempCanvas = document.createElement("canvas");
   const ctx = tempCanvas.getContext("2d");
   tempCanvas.width = width; 
-  tempCanvas.height = 3000; 
+  tempCanvas.height = 8000; // 放大基礎畫布，避免超大訂單被切掉
   ctx.fillStyle = "#FFFFFF"; ctx.fillRect(0, 0, width, tempCanvas.height);
   ctx.fillStyle = "#000000"; ctx.textBaseline = "top";
   
@@ -648,10 +649,8 @@ function buildCustomerReceiptCanvas(o){
   
   ctx.font = "bold 30px sans-serif";
   for(const item of items){
-    if(item.trim()){
-        y = drawWrappedText(ctx, "・" + item.trim(), 10, y, 360, lineHeight);
-        y += 5;
-    }
+    y = drawWrappedText(ctx, "・" + item, 10, y, 360, lineHeight);
+    y += 5;
   }
   
   ctx.font = "26px monospace"; ctx.fillText("--------------------------", 10, y); y += 38;
@@ -663,17 +662,16 @@ function buildCustomerReceiptCanvas(o){
   finalCanvas.getContext("2d").drawImage(tempCanvas, 0, 0, width, y + 20, 0, 0, width, y + 20);
   return { canvas: finalCanvas, finalHeight: y + 20 };
 }
-
-function buildKitchenReceiptCanvas(o){
-  // 這裡改用 | 或 , 來切割，確保長文字能正確分行
-  const items = String(o.content || "").split(" | "); 
+   function buildKitchenReceiptCanvas(o){
+  // 【修復關鍵】同時支援逗號(,)與直線(|)切割
+  const items = String(o.content || "").split(/[,|]/).map(i => i.trim()).filter(i => i); 
   const width = 384;
-  const lineHeight = 42; // 稍微調小一點行高
+  const lineHeight = 42; 
 
   const tempCanvas = document.createElement("canvas");
   const ctx = tempCanvas.getContext("2d");
   tempCanvas.width = width; 
-  tempCanvas.height = 5000; // 預設一個極高的高度，最後再裁切
+  tempCanvas.height = 8000; // 放大基礎畫布
   
   ctx.fillStyle = "#FFFFFF"; ctx.fillRect(0, 0, width, tempCanvas.height);
   ctx.fillStyle = "#000000"; ctx.textBaseline = "top";
@@ -686,20 +684,15 @@ function buildKitchenReceiptCanvas(o){
   ctx.fillText("取餐：" + formatPickupDisplay(o.rawPickup || o.pickup), 10, y); y += 40;
   ctx.font = "24px monospace"; ctx.fillText("--------------------------", 10, y); y += 35;
   
-  // 重點：處理超長套餐內容
-  ctx.font = "bold 34px sans-serif"; // 稍微縮小字體確保寬度夠用
+  ctx.font = "bold 34px sans-serif"; 
   for(const item of items){
-    if(item.trim()){
-        // 這裡調用上面的自動換行函數，maxWidth 設為 360 留一點邊距
-        y = drawWrappedText(ctx, "● " + item.trim(), 10, y, 360, lineHeight);
-        y += 10; // 每筆餐點間的間隔
-    }
+    y = drawWrappedText(ctx, "● " + item, 10, y, 360, lineHeight);
+    y += 10; 
   }
   
   ctx.font = "24px monospace"; ctx.fillText("--------------------------", 10, y); y += 35;
   ctx.font = "bold 30px sans-serif"; ctx.fillText("備註：" + String(o.pay || ""), 10, y); y += 40;
   
-  // 根據實際畫到的 Y 位置，重新裁切畫布，確保不會有空白也不會斷掉
   const finalCanvas = document.createElement("canvas");
   finalCanvas.width = width; finalCanvas.height = y + 30;
   finalCanvas.getContext("2d").drawImage(tempCanvas, 0, 0, width, y + 30, 0, 0, width, y + 30);
@@ -794,7 +787,12 @@ async function printCanvasToPrinter(canvas, finalHeight){
   const footer = new TextEncoder().encode(`\r\nPRINT 1,1\r\nFEED 20 mm\r\n`);
   const buf = new Uint8Array(header.length + bitmap.length + footer.length);
   buf.set(header, 0); buf.set(bitmap, header.length); buf.set(footer, header.length + bitmap.length);
-  await printerDevice.transferOut(endpointOut, buf);
+  
+  // 【修復關鍵】將巨量資料切成 8KB 的小碎塊分批餵給印表機，避免 USB 塞爆中斷
+  const CHUNK_SIZE = 8192; 
+  for (let i = 0; i < buf.length; i += CHUNK_SIZE) {
+    await printerDevice.transferOut(endpointOut, buf.slice(i, i + CHUNK_SIZE));
+  }
 }
 
 /* 初始化執行 (改由按鈕觸發) */
