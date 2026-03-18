@@ -464,12 +464,22 @@ function updatePickupTimeOptions() {
 function getTaipeiNow() { return new Date(new Date().toLocaleString("en-US", {timeZone:"Asia/Taipei"})); }
 function pad(n) { return String(n).padStart(2,'0'); }
 
-function showCheckout() {
+  function showCheckout() {
   document.getElementById("checkoutPanel").style.display = "block";
+  
+  // 【新增】進入結帳步驟時，把底部的懸浮列隱藏
+  document.getElementById("stickyCheckoutBar").style.display = "none"; 
+  
   document.getElementById("checkoutItemsDisplay").innerHTML = basket.map(i=>`• ${i.desc} ($${i.price})`).join("<br>");
   window.scrollTo({top: document.body.scrollHeight, behavior:'smooth'});
 }
-function hideCheckout() { document.getElementById("checkoutPanel").style.display = "none"; }
+
+function hideCheckout() { 
+  document.getElementById("checkoutPanel").style.display = "none"; 
+  
+  // 【新增】如果客人按「返回點餐」，再把底部的懸浮列叫回來
+  document.getElementById("stickyCheckoutBar").style.display = "block"; 
+}
 
 async function submitOrder() {
   const name = document.getElementById("customerName").value.trim();
