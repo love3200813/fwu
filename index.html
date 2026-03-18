@@ -465,17 +465,39 @@ function getTaipeiNow() { return new Date(new Date().toLocaleString("en-US", {ti
 function pad(n) { return String(n).padStart(2,'0'); }
 
   function showCheckout() {
+  // 1. 隱藏所有點餐區塊（菜單、小計、購物車、底部懸浮列）
+  document.querySelector(".mode-switch").style.display = "none";
+  document.getElementById("comboModeWrap").style.display = "none";
+  document.getElementById("singleModeWrap").style.display = "none";
+  document.querySelector(".inline-summary").style.display = "none";
+  document.getElementById("cartSection").style.display = "none";
+  document.getElementById("stickyCheckoutBar").style.display = "none";
+
+  // 2. 顯示結帳區塊並更新最終明細
   document.getElementById("checkoutPanel").style.display = "block";
-  
-  // 【新增】進入結帳步驟時，把底部的懸浮列隱藏
-  document.getElementById("stickyCheckoutBar").style.display = "none"; 
-  
   document.getElementById("checkoutItemsDisplay").innerHTML = basket.map(i=>`• ${i.desc} ($${i.price})`).join("<br>");
-  window.scrollTo({top: document.body.scrollHeight, behavior:'smooth'});
+  
+  // 3. 畫面自動滾動到最上方，讓客人專心填寫資料
+  window.scrollTo({top: 0, behavior:'smooth'});
 }
 
 function hideCheckout() { 
+  // 1. 隱藏結帳區塊
   document.getElementById("checkoutPanel").style.display = "none"; 
+  
+  // 2. 把菜單與小計區塊叫回來
+  document.querySelector(".mode-switch").style.display = "flex";
+  document.querySelector(".inline-summary").style.display = "block";
+  
+  // 3. 呼叫原本的功能：恢復客人停留在「套餐」還是「單點」的畫面
+  setOrderMode(orderMode);
+  
+  // 4. 呼叫原本的功能：重新整理購物車清單與底部懸浮列
+  updateBasketUI();
+  
+  // 5. 畫面滾動到最上方，方便客人繼續點餐
+  window.scrollTo({top: 0, behavior:'smooth'});
+}
   
   // 【新增】如果客人按「返回點餐」，再把底部的懸浮列叫回來
   document.getElementById("stickyCheckoutBar").style.display = "block"; 
