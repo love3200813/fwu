@@ -823,6 +823,61 @@ function initSystem() {
   // 班次狀態比較不急，維持每 10 秒檢查一次即可
   setInterval(fetchCurrentShift, 10000);
 }
+/* =========================
+   關鍵列印驅動：printCanvasToPrinter
+   負責將畫布轉換為印表機看得懂的 BITMAP 數據
+   ========================= */
+async function printCanvasToPrinter(canvas, finalHeight){
+  if(!printerDevice || !endpointOut) {
+    setMsg("列印失敗：未建立 USB 連線");
+    return;
+  }
+  
+  const width = canvas.width; // 固定 384
+  const height = Math.ceil(finalHeight);
+  
+  // 安全機制：如果高度超過 4000px 則強制截斷，避免 USB 傳輸炸掉
+  const safeHeight = Math.min(height, 4000); 
+  const ctx = canvas.getContext("2d");
+  const img = ctx.getImageData(0, 0, width, safeHeight).data;
+  
+  const widthBytes = 48; // 384點 / 8 = 48 bytes
+  const bitmap = new Uint8Array(widthBytes * safeHeight);
+  bitmap.fill(255); // 預設白色
+  
+  // 點陣圖轉換演算法
+  for(let py = 0; py < safeHeight; py++){
+    for(let px = 0; px < width; px++){
+      const idx = (py * width + px) * 4;
+      const gray = (img[idx] + img[idx+1] + img[idx+2]) / 3;
+      // 如果透明度夠高且顏色夠深，則打點(黑色)
+      if(img[idx+3] > 128 && gray < 180) {
+        bitmap[py * widthBytes + Math.floor(px / 8)] &= ~(1 << (7 - (px % 8)));
+      }
+    }
+  }
+  
+  // TSPL 指令包裝
+  // SIZE 單位是 mm，8 像素約等於 1mm，額外加 12mm 緩衝確保不切字
+  const mmHeight = Math.ceil(safeHeight / 8) + 12;
+  const header = new TextEncoder().encode(`SIZE 48 mm, ${mmHeight} mm\r\nGAP 0,0\r\nCLS\r\nBITMAP 0,0,48,${safeHeight},0,`);
+  const footer = new TextEncoder().encode(`\r\nPRINT 1,1\r\n`);
+  
+  // 組合數據包
+  const buf = new Uint8Array(header.length + bitmap.length + footer.length);
+  buf.set(header, 0); 
+  buf.set(bitmap, header.length); 
+  buf.set(footer, header.length + bitmap.length);
+  
+  try {
+    // 透過 WebUSB 傳送到印表機
+    await printerDevice.transferOut(endpointOut, buf);
+    setMsg("列印指令已成功送出");
+  } catch (e) {
+    setMsg("列印失敗：USB 傳輸錯誤 " + e.message);
+    console.error("Print Error:", e);
+  }
+}
 </script>
 </body>
 </html>
