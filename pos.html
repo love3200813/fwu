@@ -623,11 +623,17 @@ async function setStatus(row, status){
   if(status === "已完成" || status === "已作廢") {
     pendingRows.add(rowKey); 
     
-    // 立即隱藏
+    // 【修改重點】拔除 300ms 延遲，改成 0 秒立刻消失並釋放空間
     const card = document.getElementById(`order-card-${rowKey}`);
     if(card) {
-      card.style.opacity = "0";
-      setTimeout(() => { card.style.display = "none"; }, 300);
+      card.style.display = "none"; 
+    }
+  } else {
+    // 【貼心優化】如果是點「通知取餐」，讓該卡片變半透明，讓視覺立刻知道有按到了
+    const card = document.getElementById(`order-card-${rowKey}`);
+    if(card) {
+      card.style.opacity = "0.5";
+      card.style.pointerEvents = "none"; // 鎖住避免連點
     }
   }
 
@@ -640,7 +646,7 @@ async function setStatus(row, status){
       return;
     }
     
-    // 成功後抓取資料，延遲 3 秒才解鎖
+    // 成功後抓取資料，延遲 3 秒才解鎖記憶體
     await fetchOrders(true);
     setTimeout(() => {
       pendingRows.delete(rowKey);
