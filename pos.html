@@ -936,6 +936,14 @@ document.getElementById("searchInput").addEventListener("keypress", function(eve
 });
 
 function initSystem() {
+  // 1. 彈出密碼輸入框
+  const password = prompt("請輸入後台管理密碼：", "");
+
+  // 2. 驗證密碼 (這裡與上方 GAS 設定的密碼要一致，或直接在前端寫死)
+  if (password !== "0926") { 
+    alert("密碼錯誤，無法啟動系統！");
+    return;
+  }
   // 1. 解鎖瀏覽器音效限制
   playBeep(); 
   
