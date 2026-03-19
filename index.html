@@ -73,11 +73,12 @@ input, select { width:100%; border:1px solid var(--line); border-radius:14px; pa
 
   <div class="mode-switch">
     <button id="modeComboBtn" class="mode-btn active" onclick="setOrderMode('combo')">超值套餐</button>
-    <button id="modeSingleBtn" class="mode-btn" onclick="setOrderMode('single')">輕鬆單點</button>
+    <button id="modeSingleBtn" class="mode-btn" onclick="setOrderMode('single')">鬆鬆單點</button>
   </div>
 
   <div id="comboModeWrap">
-  <div class="combo-step">
+  
+  <div id="comboStep1" class="combo-step">
     <div class="step-head">
       <div class="brand-title" style="font-size:20px;">1. 選擇主餐</div>
       <span id="stepMainChip" class="step-chip">請選擇</span>
@@ -85,7 +86,13 @@ input, select { width:100%; border:1px solid var(--line); border-radius:14px; pa
     <div id="mainGrid" class="grid"></div>
   </div>
 
-  <div id="comboOptionsWrap" class="combo-step step-lock">
+  <div id="comboOptionsWrap" class="combo-step step-lock" style="display:none;">
+    
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; padding-bottom: 15px; border-bottom: 1px dashed var(--line);">
+      <button class="btn btn-secondary" onclick="resetCombo()" style="padding: 8px 12px; font-size: 14px;">🔙 返回重選主餐</button>
+      <div style="font-weight: 900; color: var(--danger); font-size: 18px;" id="selectedMainDisplay"></div>
+    </div>
+    
     <div class="brand-title" style="font-size:20px; margin-bottom:15px;">2. 套餐配項</div>
     
     <div style="margin-bottom:15px;">
@@ -211,19 +218,16 @@ let customerLineId = "";
 
 async function initializeLiff() {
   try {
-    // 峻，請換成下面這組 MINI App 專屬的 ID
     await liff.init({ liffId: "2009524398-V93p6sTA" }); 
     console.log("飯丸屋 MINI App 初始化成功！");
     
     if (liff.isLoggedIn()) {
       const profile = await liff.getProfile();
       customerLineId = profile.userId;
-      // 建議可以直接把名字帶入輸入框
       if(document.getElementById("customerName")) {
         document.getElementById("customerName").value = profile.displayName;
       }
     } else {
-      // 如果是在 LINE 以外開啟，可以引導登入
       // liff.login(); 
     }
   } catch (err) {
@@ -296,6 +300,13 @@ function selectMain(c) {
   document.getElementById("comboOptionsWrap").classList.remove("step-lock");
   document.getElementById("stepMainChip").innerText = "已選";
   document.getElementById("stepMainChip").className = "step-chip ok";
+  
+  // 【修改點 4：新增跳轉邏輯 (隱藏主餐、顯示配餐)】
+  document.getElementById("comboStep1").style.display = "none";
+  document.getElementById("comboOptionsWrap").style.display = "block";
+  document.getElementById("selectedMainDisplay").innerText = curCombo.main.n;
+  window.scrollTo({top: 0, behavior: 'smooth'});
+
   renderComboUI(); // 更新卡片選中狀態
   syncComboSelection(); // 同步一次選單數值與價格
 }
@@ -327,6 +338,12 @@ function resetCombo() {
   document.getElementById("stepMainChip").innerText = "請選擇";
   document.getElementById("stepMainChip").className = "step-chip";
   document.getElementById("comboOptionsWrap").classList.add("step-lock");
+
+  // 【修改點 5：新增返回邏輯 (恢復主餐、隱藏配餐)】
+  document.getElementById("comboStep1").style.display = "block";
+  document.getElementById("comboOptionsWrap").style.display = "none";
+  document.getElementById("selectedMainDisplay").innerText = "";
+
   document.getElementById("currentComboPrice").innerText = "0";
   document.getElementById("currentComboPriceDisplay").innerText = "0";
   document.getElementById("comboAddonSelect").selectedIndex = 0;
