@@ -72,8 +72,8 @@ input, select { width:100%; border:1px solid var(--line); border-radius:14px; pa
   </div>
 
   <div class="mode-switch">
-    <button id="modeComboBtn" class="mode-btn active" onclick="setOrderMode('combo')">套餐</button>
-    <button id="modeSingleBtn" class="mode-btn" onclick="setOrderMode('single')">單點</button>
+    <button id="modeComboBtn" class="mode-btn active" onclick="setOrderMode('combo')">超值套餐</button>
+    <button id="modeSingleBtn" class="mode-btn" onclick="setOrderMode('single')">輕鬆單點</button>
   </div>
 
   <div id="comboModeWrap">
@@ -379,14 +379,14 @@ function addToBasket() {
     if(!curCombo.main) return alert("請先選擇主餐！");
     const addonP = curCombo.addons.reduce((s,a)=>s+a.p, 0);
     const total = curCombo.main.comboPrice + curCombo.drink.extra + curCombo.side.extra + addonP;
-    const desc = `套餐:${curCombo.main.n}(配:${curCombo.drink.n}/${curCombo.side.n}${curCombo.addons.length?',加:'+curCombo.addons.map(a=>a.n).join('|'):''})`;
+    const desc = `超值套餐:${curCombo.main.n}(配:${curCombo.drink.n}/${curCombo.side.n}${curCombo.addons.length?',加:'+curCombo.addons.map(a=>a.n).join('|'):''})`;
     basket.push({ desc, price: total });
     resetCombo();
   } else {
     const keys = Object.keys(singleSelection);
     if(keys.length===0) return alert("請先選擇品項！");
     keys.forEach(k => {
-      basket.push({ desc: `單點:${k} x ${singleSelection[k].q}`, price: singleSelection[k].p * singleSelection[k].q });
+      basket.push({ desc: `輕鬆單點:${k} x ${singleSelection[k].q}`, price: singleSelection[k].p * singleSelection[k].q });
     });
     singleSelection = {};
     renderSingleUI();
