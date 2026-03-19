@@ -218,17 +218,19 @@ let customerLineId = "";
 
 async function initializeLiff() {
   try {
-    await liff.init({ liffId: "2009524398-V93p6sTA" }); 
-    console.log("飯丸屋 MINI App 初始化成功！");
+    await liff.init({ liffId: "2009537238-tAvQM97u" }); 
+    // 如果沒登入，強制跳轉 LINE 登入
+    if (!liff.isLoggedIn()) {
+      liff.login(); 
+      return; // 跳轉中，不執行後續
+    }
+
+    const profile = await liff.getProfile();
+    customerLineId = profile.userId; // 這裡拿到 Uxxxxxxxx
     
-    if (liff.isLoggedIn()) {
-      const profile = await liff.getProfile();
-      customerLineId = profile.userId;
-      if(document.getElementById("customerName")) {
-        document.getElementById("customerName").value = profile.displayName;
-      }
-    } else {
-      // liff.login(); 
+    // 自動填入姓名（貼心功能）
+    if(document.getElementById("customerName")) {
+      document.getElementById("customerName").value = profile.displayName;
     }
   } catch (err) {
     console.error("LIFF 初始化失敗:", err);
