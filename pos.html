@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>飯丸屋-嘉義區 POS v10.0.0 企業頂規版</title>
+<title>飯丸屋-嘉義區 POS v25.9.18 企業頂規版</title>
 <style>
 /* =======================================================
    全新日式無印奶油風 CSS (僅修改色彩、陰影、圓角，不影響架構)
@@ -980,28 +980,56 @@ async function printOrderLabel(o){
 }
 
 async function printCanvasToPrinter(canvas, finalHeight){
-  const width = canvas.width; const height = Math.ceil(finalHeight);
+  const width = canvas.width; 
+  const totalHeight = Math.ceil(finalHeight);
   const ctx = canvas.getContext("2d");
-  const img = ctx.getImageData(0, 0, width, height).data;
-  const widthBytes = 48; const bitmap = new Uint8Array(widthBytes * height);
-  bitmap.fill(255);
-  for(let py = 0; py < height; py++){
-    for(let px = 0; px < width; px++){
-      const idx = (py * width + px) * 4;
-      const gray = (img[idx] + img[idx+1] + img[idx+2]) / 3;
-      if(img[idx+3] > 128 && gray < 180) bitmap[py * widthBytes + Math.floor(px / 8)] &= ~(1 << (7 - (px % 8)));
-    }
-  }
-  const mmHeight = Math.max(60, Math.ceil(height / 8));
-  const header = new TextEncoder().encode(`SIZE 48 mm, ${mmHeight} mm\r\nGAP 2 mm, 0 mm\r\nCLS\r\nBITMAP 0,0,48,${height},0,`);
-  const footer = new TextEncoder().encode(`\r\nPRINT 1,1\r\nFEED 20 mm\r\n`);
-  const buf = new Uint8Array(header.length + bitmap.length + footer.length);
-  buf.set(header, 0); buf.set(bitmap, header.length); buf.set(footer, header.length + bitmap.length);
+  const widthBytes = 48; 
   
-  // 【修復關鍵】將巨量資料切成 8KB 的小碎塊分批餵給印表機，避免 USB 塞爆中斷
-  const CHUNK_SIZE = 8192; 
-  for (let i = 0; i < buf.length; i += CHUNK_SIZE) {
-    await printerDevice.transferOut(endpointOut, buf.slice(i, i + CHUNK_SIZE));
+  // 【關鍵設定】設定每次切塊的最大高度為 1000 像素 (約 12.5 公分)
+  // 這樣能保證資料量絕對不會超過印表機的 64KB 記憶體極限
+  const MAX_CHUNK_HEIGHT = 1000;
+
+  for (let startY = 0; startY < totalHeight; startY += MAX_CHUNK_HEIGHT) {
+    // 計算這塊要切多高 (最後一塊可能不到 1000)
+    const currentHeight = Math.min(MAX_CHUNK_HEIGHT, totalHeight - startY);
+    
+    // 只抓取這一個區塊的影像資料
+    const img = ctx.getImageData(0, startY, width, currentHeight).data;
+    const bitmap = new Uint8Array(widthBytes * currentHeight);
+    bitmap.fill(255);
+    
+    for(let py = 0; py < currentHeight; py++){
+      for(let px = 0; px < width; px++){
+        const idx = (py * width + px) * 4;
+        const gray = (img[idx] + img[idx+1] + img[idx+2]) / 3;
+        if(img[idx+3] > 128 && gray < 180) {
+          bitmap[py * widthBytes + Math.floor(px / 8)] &= ~(1 << (7 - (px % 8)));
+        }
+      }
+    }
+    
+    const mmHeight = Math.max(10, Math.ceil(currentHeight / 8));
+    
+    // 【修改重點】這裡將 GAP 強制設為 0 mm，讓切塊之間「完全無縫接軌」
+    const header = new TextEncoder().encode(`SIZE 48 mm, ${mmHeight} mm\r\nGAP 0 mm, 0 mm\r\nDIRECTION 1\r\nCLS\r\nBITMAP 0,0,48,${currentHeight},0,`);
+    
+    // 只有當「最後一塊」印完時，才執行 FEED(推紙) 動作
+    const isLastChunk = (startY + currentHeight >= totalHeight);
+    const footerStr = isLastChunk ? `\r\nPRINT 1,1\r\nFEED 20 mm\r\n` : `\r\nPRINT 1,1\r\n`;
+    const footer = new TextEncoder().encode(footerStr);
+    
+    const buf = new Uint8Array(header.length + bitmap.length + footer.length);
+    buf.set(header, 0); 
+    buf.set(bitmap, header.length); 
+    buf.set(footer, header.length + bitmap.length);
+    
+    const CHUNK_SIZE = 8192; 
+    for (let i = 0; i < buf.length; i += CHUNK_SIZE) {
+      await printerDevice.transferOut(endpointOut, buf.slice(i, i + CHUNK_SIZE));
+    }
+    
+    // 每一塊送完後，強制暫停 0.6 秒，讓印表機把這段印出來並清空大腦
+    await new Promise(resolve => setTimeout(resolve, 600));
   }
 }
 
